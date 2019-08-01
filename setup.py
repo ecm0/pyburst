@@ -23,8 +23,8 @@ setup(name='pyburst',
       license='LGPL-V3',
       packages=['pyburst'],
       install_requires=[
-          'numpy', 'lalsuite', 'gwpy', \
-          'ltfatpy', 'astropy', 'healpy', 'astropy-healpix'
+          'numpy', 'lalsuite', 'gwpy', 'ltfatpy', \
+          'astropy', 'healpy', 'astropy-healpix', 'matplotlib'
       ],
       test_suite='nose.collector',
       tests_require=['nose', 'nose-cover3'],

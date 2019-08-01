@@ -5,6 +5,7 @@ import lal
 import healpy
 from astropy_healpix import HEALPix
 from astropy.coordinates import SkyCoord, ICRS
+import matplotlib.pyplot as plt
 
 
 COORD_SYSTEMS = {'geographic': lal.COORDINATESYSTEM_GEOGRAPHIC, \
