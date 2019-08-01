@@ -168,7 +168,7 @@ class Skymap(object):
         
         # Get co-latitude and longitude coordinates of the skygrid in the target coord system 
         colat, lon = healpy.pix2ang(self.nside, \
-                                    np.arange(healpy.nside2npix(self.nside)), \
+                                    numpy.arange(healpy.nside2npix(self.nside)), \
                                     nest=self.is_nested())
         
         # Map target to original coordinates
@@ -180,7 +180,7 @@ class Skymap(object):
         (colat_rot, lon_rot) = tuple(map(list,zip(*coords_rot)))
  
         # Compute skymap in target coord system: interpolate the skymap at points that map to target coords
-        data_rot = healpy.get_interp_val(self.data, np.array(colat_rot), np.array(lon_rot), \
+        data_rot = healpy.get_interp_val(self.data, numpy.array(colat_rot), numpy.array(lon_rot), \
                                              nest=self.is_nested())
         
         # Create target skymap and set its coordinate system
@@ -194,9 +194,9 @@ class Skymap(object):
         Returns the location of the skymap minimum
         """
         
-        coords = healpy.pix2ang(self.nside,np.argmin(self.data), nest=self.is_nested())
+        coords = healpy.pix2ang(self.nside,numpy.argmin(self.data), nest=self.is_nested())
         return Skypoint(coords[1], math.pi/2-coords[0], self.system.name, \
-                             label + " (val={0:.2f})".format(np.min(self.data)))
+                             label + " (val={0:.2f})".format(numpy.min(self.data)))
     
     def display(self, title, cmap_name='gray_r'):
         """
