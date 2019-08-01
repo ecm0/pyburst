@@ -1,6 +1,8 @@
 import numpy
-import HEALPix, healpy
-import lal
+import healpy
+from astropy_healpix import HEALPix
+from astropy.coordinates import SkyCoord, ICRS
+
 
 COORD_SYSTEMS = {'geographic': lal.COORDINATESYSTEM_GEOGRAPHIC, \
                  'equatorial': lal.COORDINATESYSTEM_EQUATORIAL}

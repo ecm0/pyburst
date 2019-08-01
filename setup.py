@@ -24,7 +24,7 @@ setup(name='pyburst',
       packages=['pyburst'],
       install_requires=[
           'numpy', 'lalsuite', 'gwpy', \
-          'ltfatpy', 'astropy', 'healpy', 'HEALPix'
+          'ltfatpy', 'astropy', 'healpy', 'astropy-healpix'
       ],
       test_suite='nose.collector',
       tests_require=['nose', 'nose-cover3'],

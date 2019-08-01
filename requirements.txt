@@ -3,5 +3,5 @@ gwpy
 ltfatpy
 astropy
 healpy
-HEALPix
+astropy-healpix
 versioneer
