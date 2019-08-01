@@ -1,5 +1,5 @@
 import numpy
-import healpy
+import HEALPix, healpy
 import lal
 
 COORD_SYSTEMS = {'geographic': lal.COORDINATESYSTEM_GEOGRAPHIC, \

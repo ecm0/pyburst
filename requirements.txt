@@ -3,4 +3,5 @@ gwpy
 ltfatpy
 astropy
 healpy
+HEALPix
 versioneer
