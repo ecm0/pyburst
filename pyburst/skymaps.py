@@ -1,4 +1,5 @@
 import numpy
+import lal
 import healpy
 from astropy_healpix import HEALPix
 from astropy.coordinates import SkyCoord, ICRS
