@@ -1,0 +1,6 @@
+lalsuite
+gwpy
+ltfatpy
+astropy
+healpy
+versioneer
