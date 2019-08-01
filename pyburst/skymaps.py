@@ -1,3 +1,4 @@
+import copy
 import numpy
 import lal
 import healpy
