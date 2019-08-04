@@ -75,7 +75,9 @@ class Skypoint(object):
         if fmt=='latlon':
             angles = (self.lat, self.lon)
         elif fmt=='colatlon': 
-            angles = (math.pi/2-self.lat, self.lon)    
+            angles = (math.pi/2-self.lat, self.lon)
+        elif fmt=='lonlat':
+            angles = (self.lon, self.lat)
         else:
             logging.warning('Unknown format')
             return None
