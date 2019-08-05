@@ -24,7 +24,7 @@ class Coordsystem(object):
         """
     
         def __init__(self, name):
-            
+
             assert name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
             self.name = name
     
@@ -47,17 +47,17 @@ class Skypoint(object):
     A Skypoint object describes a direction in the sky in a given coordinate system.
     """
     
-    def __init__(self, lon, lat, system_name, label=''):
+    def __init__(self, lon, lat, system, label=''):
         """
         lon -- longitude or right ascension (in radians)
         lat -- latitude or declination (in radians)
-        system_name -- name of the coordinate system (str)
+        system -- coordinate system descriptor (str or Coordsystem)
         label -- optional qualifying label
         """
         
         self.lon = lon
         self.lat = lat
-        self.system = Coordsystem(system_name)
+        self.system = Coordsystem(system)
         self.label = label
     
     def __str__(self):
@@ -127,7 +127,7 @@ class Skymap(object):
     A skymap object is an HEALPix map equipped with a custom coordinate system -- from LAL.
     """
     
-    def __init__(self, nside, system_name, array, order='nested'):
+    def __init__(self, nside, system, array, order='nested'):
         """
         """
             
@@ -141,16 +141,20 @@ class Skymap(object):
         self.data = array
         self.nside = nside
         self.order = order
-        self.system = Coordsystem(system_name)
+        self.system = Coordsystem(system)
        
     def is_nested(self):
         return self.order == 'nested'
-    
+
+    def grid_points(self):
+        return [Skypoint(math.radians(p.ra.value), math.radians(p.dec.value), self.system.name) \
+                for p in self.grid.healpix_to_skycoord(range(self.grid.npix))]
+
     def feed(self, data):
         out = copy.copy(self)
         out.data = data
         return out
-    
+
     def value(self, skypoint):
         """
         Returns the skymap value at a skypoint. The skymap and skypoint
