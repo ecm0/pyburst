@@ -13,6 +13,10 @@ DETECTOR_SITES = {
     'I1': LALDetectorIndexLIODIFF
     }
 
+# Reference date where Greenwich Mean Sidereal Time is 0 hr
+# lal.GreenwichMeanSiderealTime(REFDATE_GMST_ZERO) results in -9.524206245228903e-15
+REFDATE_GMST_ZERO = lal.LIGOTimeGPS(630696086, 238589290) # Dec 31 1999, 17:21:13 238589
+
 import lalsimulation
 from lalsimulation import SimDetectorStrainREAL8TimeSeries
 
@@ -68,6 +72,12 @@ class Detector(object):
         """ Project hplus and hcross onto the detector frame 
         assuming a given sky location and polarization of the source.
         Apply consistent time delay due to wave propagation.
+        
+        hplus, hcross: plus and cross polarisation (REAL8TimeSeries)
+        ra: right ascension in radians
+        dec: declination in radians
+        psi: polarization angle in radians
+
         """
 
         assert hplus.data.length == hcross.data.length
@@ -88,8 +98,11 @@ class Detector(object):
         dec = numpy.atleast_1d(dec) # change to vector if scalar
                 
         assert ra.size == dec.size, "RA and dec arrays don't have the same size"
-        
-        time = ref_time if ref_time is not None else 0.0
+
+        # Set the reference time of the sky coordinate conversion
+        # When time=REFDATE_GMST_ZERO the geographic and equatorial coordinate
+        # systems coincide.
+        time = ref_time if ref_time is not None else REFDATE_GMST_ZERO
 
         delays = []
         for (ra_val, dec_val) in zip(ra, dec):
