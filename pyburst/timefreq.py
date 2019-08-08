@@ -115,3 +115,41 @@ class TimeFreq(object):
         """
         self.data[0:self.freq_index(cutoff_freq, sampling_freq)] = 0
         return self
+
+    def marginal(self, axis='freq', method='medianmean'):
+        """
+        Marginalize time-freq map in time or freq using
+        the selected method ('medianmean' [default] or 'mean')
+
+        method='medianmean': 
+        arXiv:gr-qc/0509116 appendix B for details.
+        """
+
+        axis_idx = [0 if axis=='time' else 1 if axis=='freq' else None]
+
+        if method == 'mean':
+            return numpy.linalg.norm(self.data, axis=axis_idx)
+        elif method == 'medianmean':
+            medians = []
+            for offset in range(1):
+                data = self.data[offset::2]
+                medians.append(numpy.median(data, axis=axis_idx)/_median_bias(data.shape[axis_idx]))
+            return numpy.mean(numpy.array(medians))
+        else:
+            logging.warning("Unknown averaging method")
+            return None
+        
+def _median_bias(n):
+    """
+    Compute the bias of median estimates vs the data size
+    arXiv:gr-qc/0509116 appendix B for details.
+    """
+
+    if n >= 1000:
+        return numpy.log(2)
+    ans = 1
+    for i in range(1, int((n - 1) / 2 + 1)):
+        ans += 1.0 / (2*i + 1) - 1.0 / (2*i)
+        
+    return ans
+       
