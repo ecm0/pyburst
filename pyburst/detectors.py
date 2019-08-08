@@ -67,9 +67,13 @@ class Detector(object):
         f = [lal.ComputeDetAMResponse(self.descriptor.response, \
                                       *p.coords(fmt='lonlat',unit='radians'), \
                                       psi, gmst_rad) for p in skypoints]
+
         f = numpy.squeeze(numpy.array(f))
-            
-        return f[:,0], f[:,1] # fplus, fcross
+
+        if f.ndim == 1:
+            return tuple(f) # fplus, fcross
+        else:
+            return f[:,0], f[:,1] # fplus, fcross
     
     def project_strain(self, hplus, hcross, time, ra, dec, psi):
         """ Project hplus and hcross onto the detector frame 
