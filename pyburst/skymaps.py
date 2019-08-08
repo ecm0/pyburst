@@ -1,3 +1,4 @@
+
 import math
 import copy
 import numpy
@@ -6,7 +7,6 @@ import healpy
 from astropy_healpix import HEALPix
 from astropy.coordinates import SkyCoord, ICRS
 import matplotlib.pyplot as plt
-
 
 COORD_SYSTEMS = {'geographic': lal.COORDINATESYSTEM_GEOGRAPHIC, \
                  'equatorial': lal.COORDINATESYSTEM_EQUATORIAL}
@@ -23,13 +23,21 @@ class Coordsystem(object):
         A Coordsystem object characterizes a coordinate system of the celestial sphere
         """
     
-        def __init__(self, name):
-
-            assert name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
+        def __init__(self, name, ref_time=None):
+            """
+            name -- name of the coordinate systems
+            ref_time: reference time when using the equatorial coordinate system
+            """
+            
             self.name = name
-    
+            self.ref_time = ref_time
+            self.is_valid()
+            
         def __str__(self):
             return self.name
+        
+        def is_valid(self):
+            assert self.name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
         
         def to_lal(self):
             return COORD_SYSTEMS[self.name]
@@ -47,21 +55,21 @@ class Skypoint(object):
     A Skypoint object describes a direction in the sky in a given coordinate system.
     """
     
-    def __init__(self, lon, lat, system, label=''):
+    def __init__(self, lon, lat, coordsystem, label=''):
         """
         lon -- longitude or right ascension (in radians)
         lat -- latitude or declination (in radians)
-        system -- coordinate system descriptor (str or Coordsystem)
+        coordsystem -- coordinate system descriptor (str or Coordsystem)
         label -- optional qualifying label
         """
         
         self.lon = lon
         self.lat = lat
-        self.system = Coordsystem(system)
+        self.coordsystem = Coordsystem(coordsystem)
         self.label = label
     
     def __str__(self):
-            return PRETTY_PRINT_POINT_STR.format(self.label, self.system, \
+            return PRETTY_PRINT_POINT_STR.format(self.label, self.coordsystem, \
                                             self.lon, numpy.degrees(self.lon),\
                                             self.lat, numpy.degrees(self.lat))
         
@@ -90,50 +98,55 @@ class Skypoint(object):
             logging.warning('Unknown unit')
             return None
             
-    def transform_to(self, system_name, time):
+    def transform_to(self, coordsystem, time):
         """
         Transforms to another coordinates system
         """
     
-        system = Coordsystem(system_name)
+        coordsystem = Coordsystem(coordsystem)
     
-        if self.system == system:
+        if self.coordsystem == coordsystem:
             logging.warning('Attempt to transform to same coordinate system')
             return self
                      
         input = lal.SkyPosition()
         input.longitude = self.lon
         input.latitude = self.lat
-        input.system = self.system.to_lal()
+        input.coordsystem = self.coordsystem.to_lal()
 
         output = lal.SkyPosition()
 
-        self.system.transforms_to(system)(output,input,time)
+        self.coordsystem.transforms_to(coordsystem)(output,input,time)
         
-        return Skypoint(output.longitude, output.latitude, system.name, self.label)
+        return Skypoint(output.longitude, output.latitude, coordsystem.name, self.label)
+
+    def mirror(self):
+        return Skypoint((self.longitude + math.pi) % (2 * math.pi), -self.latitude, \
+                        self.coordsystem, "Mirror of " + self.label)
     
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
                         markersize=6, \
                         label=self.label)
-
+    
 #        healpy.projplot(*self.coords_deg(), marker+color, \
 #                        markersize=6, \
 #                        label=self.label, \
 #                        lonlat=True)
+
 
 class Skymap(object):
     """ 
     A skymap object is an HEALPix map equipped with a custom coordinate system -- from LAL.
     """
     
-    def __init__(self, nside, system, array, order='nested'):
+    def __init__(self, nside, coordsystem, array, order='nested'):
         """
         """
             
         # HEALPix map is defined in the ICRS() frame, but the 
         # HEALPix frame is not used in practice.
-        # The coordinate system that is used is defined by self.system
+        # The coordinate system that is used is defined by self.coordsystem
         # Note: healpy nor astropy do not support ECEF/Geographic coordinate systems (yet)
         # The skymap is equipped with a custom coordinate system.
 
@@ -141,13 +154,13 @@ class Skymap(object):
         self.data = array
         self.nside = nside
         self.order = order
-        self.system = Coordsystem(system)
+        self.coordsystem = Coordsystem(coordsystem)
        
     def is_nested(self):
         return self.order == 'nested'
 
     def grid_points(self):
-        return [Skypoint(math.radians(p.ra.value), math.radians(p.dec.value), self.system.name) \
+        return [Skypoint(math.radians(p.ra.value), math.radians(p.dec.value), self.coordsystem.name) \
                 for p in self.grid.healpix_to_skycoord(range(self.grid.npix))]
 
     def feed(self, data):
@@ -161,7 +174,7 @@ class Skymap(object):
         must have the same coordinate system.
         """
         
-        assert self.system.name == skypoint.system.name, "The skymap and skypoint must have the same coordinate system"
+        assert self.coordsystem.name == skypoint.coordsystem.name, "The skymap and skypoint must have the same coordinate system"
         
         # Get the pixel index that corresponds to the skypoint coordinates  
         idx = healpy.ang2pix(self.nside, \
@@ -169,7 +182,7 @@ class Skymap(object):
                                 nest=self.is_nested())
         return self.data[idx]
     
-    def transform_to(self, system_name, time):
+    def transform_to(self, coordsystem_name, time):
         """
         Transforms the skymap to another coordinate system
         """
@@ -180,7 +193,7 @@ class Skymap(object):
                                     nest=self.is_nested())
         
         # Map target to original coordinates
-        points = [Skypoint(l, math.pi/2-c, system_name).transform_to(self.system.name, time) \
+        points = [Skypoint(l, math.pi/2-c, coordsystem_name).transform_to(self.coordsystem.name, time) \
                                   for l, c in zip(lon, colat)]
         
         # Transform the list of coordinate tuples [(lon, lat), ...] into two lists [lons, lats]
@@ -193,7 +206,7 @@ class Skymap(object):
         
         # Create target skymap and set its coordinate system
         out = self.feed(data_rot)
-        out.system = Coordsystem(system_name)
+        out.coordsystem = Coordsystem(coordsystem_name)
  
         return out
     
@@ -203,7 +216,7 @@ class Skymap(object):
         """
         
         coords = healpy.pix2ang(self.nside,numpy.argmin(self.data), nest=self.is_nested())
-        return Skypoint(coords[1], math.pi/2-coords[0], self.system.name, \
+        return Skypoint(coords[1], math.pi/2-coords[0], self.coordsystem.name, \
                              label + " (val={0:.2f})".format(numpy.min(self.data)))
     
     def display(self, title, cmap_name='gray_r'):
@@ -215,4 +228,4 @@ class Skymap(object):
         cmap.set_under('w')
         healpy.mollview(self.data, \
                     nest=self.is_nested(), cmap=cmap, \
-                    title=title + " ({})".format(self.system))
+                    title=title + " ({})".format(self.coordsystem))
