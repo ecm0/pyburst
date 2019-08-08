@@ -98,7 +98,7 @@ class Skypoint(object):
             logging.warning('Unknown unit')
             return None
             
-    def transform_to(self, coordsystem, time):
+    def transformed_to(self, coordsystem, time):
         """
         Transforms to another coordinates system
         """
@@ -112,7 +112,7 @@ class Skypoint(object):
         input = lal.SkyPosition()
         input.longitude = self.lon
         input.latitude = self.lat
-        input.coordsystem = self.coordsystem.to_lal()
+        input.system = self.coordsystem.to_lal()
 
         output = lal.SkyPosition()
 
@@ -182,7 +182,7 @@ class Skymap(object):
                                 nest=self.is_nested())
         return self.data[idx]
     
-    def transform_to(self, coordsystem_name, time):
+    def transformed_to(self, coordsystem_name, time):
         """
         Transforms the skymap to another coordinate system
         """
@@ -193,7 +193,7 @@ class Skymap(object):
                                     nest=self.is_nested())
         
         # Map target to original coordinates
-        points = [Skypoint(l, math.pi/2-c, coordsystem_name).transform_to(self.coordsystem.name, time) \
+        points = [Skypoint(l, math.pi/2-c, coordsystem_name).transformed_to(self.coordsystem.name, time) \
                                   for l, c in zip(lon, colat)]
         
         # Transform the list of coordinate tuples [(lon, lat), ...] into two lists [lons, lats]
