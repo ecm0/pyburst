@@ -64,7 +64,7 @@ class Detector(object):
         
         gmst_rad = lal.GreenwichMeanSiderealTime(ref_time) if ref_time is not None else 0.0
                                
-        f = [ComputeDetAMResponse(self.descriptor.response, \
+        f = [lal.ComputeDetAMResponse(self.descriptor.response, \
                                       *p.coords(fmt='lonlat',unit='radians'), \
                                       psi, gmst_rad) for p in skypoints]
         f = numpy.squeeze(numpy.array(f))
@@ -115,6 +115,6 @@ class Detector(object):
         
         delays = [lal.TimeDelayFromEarthCenter(self.location, \
                                                    *p.coords(fmt='lonlat',unit='radians'), \
-                                                   ref_time)]
+                                                   ref_time) for p in skypoints]
     
         return numpy.squeeze(numpy.array(delays))
