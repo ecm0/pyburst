@@ -2,16 +2,18 @@ from unittest import TestCase
 
 import math
 import numpy
+from numpy.random import uniform
 import healpy
 
 import pyburst.skymaps as pb
 
 NSIDE = 32
+TIME = LIGOTimeGPS(630720013) # Jan 1 2000, 00:00 UTC
 COORD_SYS = 'equatorial'
 
 class TestCoordsystem(TestCase):
 
-    def test_initcoord(self):
+    def test_initcoordsystem(self):
         try:
             pb.Coordsystem('geographic')
         except Exception:
@@ -27,6 +29,28 @@ class TestCoordsystem(TestCase):
         
         # self.assertRaises(AssertionError, pb.Coordsystem, 'test')            
 
+class TestSkypoint(TestCase):
+
+    def test_initskypoint(self):
+        try:
+            p = pb.skymaps.Skypoint(0, 0, 'equatorial', '')
+        except Exception:
+            self.fail('Skypoint instantiation failed')
+        try:
+            p = pb.skymaps.Skypoint(0, 0, 'geographic', '')
+        except Exception:
+            self.fail('Skypoint instantiation failed')
+
+
+    def test_conversion(self):
+        
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        pt_orig = pb.skymaps.Skypoint(*numpy.radians(coords), 'equatorial', '')
+        pt_geo = pt_orig.transformed_to('geographic', TIME)
+        pt_eq = pt_geo.transformed_to('equatorial', TIME)
+
+        self.assertSequenceEqual((pt_orig.lon, pt_orig.lat), (pt_eq.lon, pt_eq.lat))
+        
 class TestSkymap(TestCase):
 
     def test_value(self):
