@@ -1,3 +1,4 @@
+import math
 import numpy
 
 from ltfatpy import dgtreal, idgtreal
@@ -119,22 +120,36 @@ class TimeFreq(object):
     def marginal(self, axis='freq', method='medianmean'):
         """
         Marginalize time-freq map in time or freq using
-        the selected method ('medianmean' [default] or 'mean')
+        the selected method ('medianmean' [default], 'mean' or 'median')
 
-        method='medianmean': 
+        Note: the bias of the median estimator for the mean is described in
         arXiv:gr-qc/0509116 appendix B for details.
         """
 
-        axis_idx = [0 if axis=='time' else 1 if axis=='freq' else None]
+        summed_axis_ix = 0 if axis=='time' else 1 if axis=='freq' else None
 
+        ## XXX The bias of median estimator appears to be smaller than the one
+        ## XXX calculated by _median_bias() ! This correction should possibility
+        ## XXX be applied to the PSD and not to the ASD?
+        
         if method == 'mean':
-            return numpy.linalg.norm(self.data, axis=axis_idx)
+            # return numpy.linalg.norm(self.data, axis=summed_axis_ix)
+            # return numpy.sqrt(numpy.mean(numpy.abs(self.data)**2, axis=summed_axis_ix))
+            return numpy.mean(numpy.abs(self.data), axis=summed_axis_ix)
+        elif method == 'median':
+            return numpy.median(numpy.abs(self.data), axis=summed_axis_ix)
+                # / _median_bias(self.data.shape[summed_axis_ix])
+                # return numpy.sqrt(numpy.median(numpy.abs(self.data)**2, axis=summed_axis_ix))
         elif method == 'medianmean':
             medians = []
-            for offset in range(1):
-                data = self.data[offset::2]
-                medians.append(numpy.median(data, axis=axis_idx)/_median_bias(data.shape[axis_idx]))
-            return numpy.mean(numpy.array(medians))
+            for offset in range(2):
+                # Select even and odd rows/columns
+                data = numpy.take(self.data, range(offset,self.data.shape[summed_axis_ix],2), axis=summed_axis_ix)
+                # Compute median separately on even and odd rows/columns ...
+                medians.append(numpy.median(numpy.abs(data), axis=summed_axis_ix))
+                # / _median_bias(data.shape[summed_axis_ix]))
+                # ... and average
+            return numpy.squeeze(numpy.mean(numpy.array(medians), axis=0))
         else:
             logging.warning("Unknown averaging method")
             return None
