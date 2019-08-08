@@ -1,3 +1,4 @@
+import logging
 import numpy
 
 import lal
@@ -15,6 +16,8 @@ DETECTOR_SITES = {
 
 # Reference date where Greenwich Mean Sidereal Time is 0 hr
 # lal.GreenwichMeanSiderealTime(REFDATE_GMST_ZERO) results in -9.524206245228903e-15
+# At this specific time, the equatorial coordinate system coincides with the geographic
+# coordinate system to precision machine
 REFDATE_GMST_ZERO = lal.LIGOTimeGPS(630696086, 238589290) # Dec 31 1999, 17:21:13 238589
 
 import lalsimulation
@@ -44,29 +47,29 @@ class Detector(object):
     def __str__(self):
         return self.name
             
-    def antenna_pattern(self, ra, dec, psi, ref_time=None):
+    def antenna_pattern(self, skypoints, ref_time=None, psi=0):
         """ Compute antenna response
-            ra or long: right ascension or longitude in radians if ref_time is None 
-            dec or lat: declination or latitude in radians if ref_time is None
-            ref_time: reference time used to compute equatorial sky coordinates
+            skypoints: Skypoint object or list of Skypoint objects
+            ref_time: reference time when using the equatorial coordinate system
+            psi: optional polarization angle (default: 0)
         """
-        
-        ra = numpy.atleast_1d(ra) # change to vector if scalar
-        dec = numpy.atleast_1d(dec) # change to vector if scalar
-                
-        assert ra.size == dec.size, "RA and dec arrays don't have the same size"
+
+        if not isinstance(skypoints, list):
+            skypoints = [skypoints]
+
+        skypoints[0].coordsystem.is_valid()
+
+        if skypoints[0].coordsystem.name == 'equatorial':
+            assert ref_time is not None, 'Reference time is required when using the equatorial coordinate system'
         
         gmst_rad = lal.GreenwichMeanSiderealTime(ref_time) if ref_time is not None else 0.0
                                
-        fplus = []
-        fcross = []
-        for (ra_val, dec_val) in zip(ra, dec):
-            fplus_val,fcross_val = lal.ComputeDetAMResponse(self.descriptor.response, \
-                                                       ra_val, dec_val, psi, gmst_rad)
-            fplus.append(fplus_val)
-            fcross.append(fcross_val)
+        f = [ComputeDetAMResponse(self.descriptor.response, \
+                                      *p.coords(fmt='lonlat',unit='radians'), \
+                                      psi, gmst_rad) for p in skypoints]
+        f = numpy.squeeze(numpy.array(f))
             
-        return numpy.squeeze(numpy.array(fplus)), numpy.squeeze(numpy.array(fcross))
+        return f[:,0], f[:,1] # fplus, fcross
     
     def project_strain(self, hplus, hcross, time, ra, dec, psi):
         """ Project hplus and hcross onto the detector frame 
@@ -88,24 +91,30 @@ class Detector(object):
                                         ra, dec, psi, \
                                         self.descriptor))
 
-    def time_delay_from_earth_center(self, ra, dec, ref_time=None):
+    def time_delay_from_earth_center(self, skypoints, ref_time=None):
         """ Returns the time delay from the earth center
-            ra or long: right ascension or longitude in radians if ref_time is None 
-            dec or lat: declination or latitude in radians if ref_time is None
+            skypoints: Skypoint object or list of Skypoint objects
+            ref_time: reference time when using the equatorial coordinate system
         """
+
+        if not isinstance(skypoints, list):
+            skypoints = [skypoints]
+
+        skypoints[0].coordsystem.is_valid()
+
+        if skypoints[0].coordsystem.name == 'equatorial':
+            assert ref_time is not None, 'Reference time is required when using the equatorial coordinate system'
+        elif skypoints[0].coordsystem.name == 'geographic':
+            # lal.TimeDelayFromEarthCenter() only takes equatorial coordinates.
+            # Equatorial coordinates at time=REFDATE_GMST_ZERO coincide with
+            # geographic coordinates
+            ref_time = REFDATE_GMST_ZERO
+        else:
+            logging.warning('Unknown format')
+            return None
         
-        ra = numpy.atleast_1d(ra) # change to vector if scalar
-        dec = numpy.atleast_1d(dec) # change to vector if scalar
-                
-        assert ra.size == dec.size, "RA and dec arrays don't have the same size"
-
-        # Set the reference time of the sky coordinate conversion
-        # When time=REFDATE_GMST_ZERO the geographic and equatorial coordinate
-        # systems coincide.
-        time = ref_time if ref_time is not None else REFDATE_GMST_ZERO
-
-        delays = []
-        for (ra_val, dec_val) in zip(ra, dec):
-            delays.append(lal.TimeDelayFromEarthCenter(self.location, ra_val, dec_val, time))
+        delays = [lal.TimeDelayFromEarthCenter(self.location, \
+                                                   *p.coords(fmt='lonlat',unit='radians'), \
+                                                   ref_time)]
     
         return numpy.squeeze(numpy.array(delays))
