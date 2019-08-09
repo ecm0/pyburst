@@ -51,7 +51,8 @@ class TestSkypoint(TestCase):
         pt_geo = pt_orig.transformed_to('geographic', TIME)
         pt_eq = pt_geo.transformed_to('equatorial', TIME)
 
-        self.assertSequenceEqual((pt_orig.lon, pt_orig.lat), (pt_eq.lon, pt_eq.lat))
+        self.assertAlmostEqual(pt_orig.lon, pt_eq.lon, places=7)
+        self.assertAlmostEqual(pt_orig.lat, pt_eq.lat, places=7)
         
 class TestSkymap(TestCase):
 

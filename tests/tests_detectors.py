@@ -56,8 +56,8 @@ class TestDetector(TestCase):
         d = pb.detectors.Detector('V1')
         delay = d.time_delay_from_earth_center(pt_eq, TIME)
     
-        hplus = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
-        hcross = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
 
@@ -94,8 +94,8 @@ class TestDetector(TestCase):
         d = pb.detectors.Detector('V1')
         antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
         
-        hplus = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
-        hcross = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
             
@@ -110,12 +110,16 @@ class TestDetector(TestCase):
 
         # Inject signal into timeseries
         h = data.inject(response)
-        estimated_pat = h.max().to_value()
+
+        if antenna_pat[0] > 0:
+            estimated_pat = h.max().to_value()
+        else:
+            estimated_pat = h.min().to_value()
 
         print("Exact antenna pattern = {} ; Estimated amplitude = {}".format(antenna_pat[0], estimated_pat))
             
         # Estimate delay from timeseries
-        self.assertAlmostEqual(antenna_pat[0], estimated_pat, places=5)
+        self.assertAlmostEqual(antenna_pat[0], estimated_pat, places=2)
             
 # Test sky points in grid have similar antennna patterns and delays
 
