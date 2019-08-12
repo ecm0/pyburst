@@ -140,22 +140,23 @@ class Skymap(object):
     A skymap object is an HEALPix map equipped with a custom coordinate system -- from LAL.
     """
     
-    def __init__(self, nside, coordsystem, array, order='nested'):
+    def __init__(self, nside, coordsystem, order='nested', array=None):
         """
+        grid: HEALPix map object
+        nside: HEALPix nside parameter (int, power of 2)
+        order: pixel ordering scheme of the HEALPix map
+        coordsystem: name of the coordinate system (str) in the list supported by the LAL library
+        Note: the HEALPix map is initialized with a dummy ICRS coordinate frame,
+        that is not used. The 
+        The reason for this healpy nor astropy do not support ECEF/Geographic coordinate systems (yet)
         """
             
-        # HEALPix map is defined in the ICRS() frame, but the 
-        # HEALPix frame is not used in practice.
-        # The coordinate system that is used is defined by self.coordsystem
-        # Note: healpy nor astropy do not support ECEF/Geographic coordinate systems (yet)
-        # The skymap is equipped with a custom coordinate system.
-
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
-        self.data = array
         self.nside = nside
         self.order = order
         self.coordsystem = Coordsystem(coordsystem)
-       
+        self.data = numpy.empty(healpy.nside2npix(nside)) if array is None else array
+        
     def is_nested(self):
         return self.order == 'nested'
 
