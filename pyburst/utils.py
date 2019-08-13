@@ -52,14 +52,14 @@ def pseudoinverse(a, rcond=1e-15):
                      numpy.transpose(v, swap) * s[..., None, :],
                      numpy.transpose(u, swap))
 
-def frac_time_shift(x, delay, interp_filt=None):
+def frac_time_shift(x, shift, interp_filt=None):
         """ 
         Shift the input time series by a (possibly fractional) number of samples. 
         The interpolator filter is either specified or either designed with a Kaiser-windowed 
         sinecard.
 
         x: input timeseries (Numpy array)
-        delay: shift in (possibly non-integer) number of samples (scalar)
+        shift: shift in (possibly non-integer) number of samples (scalar)
         interp_filt: interpolator filter (Numpy array -- default = None)
 
         Ref [1] A. V. Oppenheim, R. W. Schafer and J. R. Buck, Discrete-time signal 
@@ -69,34 +69,33 @@ def frac_time_shift(x, delay, interp_filt=None):
         unit delay, IEEE Signal Processing Magazine, vol. 13, no. 1, pp 30--59 Jan 1996
         """
 
-        if float(delay).is_integer():
-            return numpy.roll(x, int(delay)
+        if float(shift).is_integer():
+            return numpy.roll(x, int(shift))
 
-        frac_delay = delay - numpy.fix(delay)
+        int_shift = int(numpy.fix(shift))
+        frac_shift = shift - int_shift
 
         if interp_filt is None:
 
             # Compute the ideal (sinecard) interpolation filter
-            time = numpy.arange(-INTERP_FILTER_LENGTH, INTERP_FILTER_LENGTH)
+            time = numpy.arange(-HALF_INTERP_FILTER_LENGTH, HALF_INTERP_FILTER_LENGTH+1)
             sinc_filter = 2 * STOPBAND_CUTOFF_F * \
-                              numpy.sinc(2 * STOPBAND_CUTOFF_F * (time-frac_delay))
-                                
-            # Window ideal (sincard) filter                              
-            interp_filt = numpy.pad(sinc_filter * \
-                            numpy.kaiser(INTERP_FILTER_LENGTH, _kaiser_beta(REJECTION_DB)), \
-                            (pre, post), 'constant')
+                              numpy.sinc(2 * STOPBAND_CUTOFF_F * (time-frac_shift))
 
-        offset = math.floor(len(interp_filt)/2)
+            # Window ideal (sincard) filter
+            interp_filt = sinc_filter * \
+                            numpy.kaiser(INTERP_FILTER_LENGTH, _kaiser_beta(REJECTION_DB))
+
+        offset = int(len(interp_filt)/2)
                               
         # Pre and postpad filter response
         interp_filt = numpy.pad(interp_filt, \
-                                (len(interp_filter), len(x)  + offset))
+                                (len(interp_filt), len(x)  + offset))
 
         # Filtering
         xfilt = upfirdn(x, interp_filt , 1, 1)
-        
-        return circshift(xfilt[offset+1:offset+1+len(x)], numpy.fix(delay));
 
+        return numpy.roll(xfilt[offset+1:offset+1+len(x)], int_shift)
                       
 def _kaiser_beta(rejection_db):
     """
@@ -111,8 +110,3 @@ def _kaiser_beta(rejection_db):
     else:
         return 0.0
 
-
-# time = numpy.arange(0, 2 * INTERP_FILT_LENGTH) - frac_delay
-# arg = 2 * beta / 2 * INTERP_FILT_LENGTH  \
-#    * numpy.sqrt (time * (2 * INTERP_FILT_LENGTH - time))
-# window = numpy.besseli (0, arg) / numpy.besseli (0, beta)
