@@ -65,7 +65,7 @@ class TestSkymap(TestCase):
 
         # Generate skymap and set all pixel values to zero
         zeros = numpy.zeros(healpy.nside2npix(NSIDE))
-        sky = pb.Skymap(NSIDE, COORD_SYS, zeros, order='nested')
+        sky = pb.Skymap(NSIDE, COORD_SYS, order='nested', array=zeros)
 
         # Set value of selected pixel to 1.0
         idx = healpy.ang2pix(NSIDE,*p.coords(),nest=True)
