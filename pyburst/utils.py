@@ -73,21 +73,28 @@ def frac_time_shift(x, shift, interp_filt=None):
             return numpy.roll(x, int(shift))
 
         int_shift = int(numpy.fix(shift))
-        frac_shift = shift - int_shift
 
         if interp_filt is None:
-            interp_filt = _design_default_filter(frac_shift)  
-                                         
+            interp_filt = _design_default_filter(shift - int_shift)
+
+        # Using numpy.convolve as this is the fastest convolution method
+        # for small number of taps according to
+        # https://scipy-cookbook.readthedocs.io/items/ApplyFIRFilter.html
+        return numpy.roll(numpy.convolve(interp_filt, x, mode='same'), int_shift)
+
+        # Earlier implementation using polyphase resampling
+        #
         # Pre and postpad filter response
-        offset = int(len(interp_filt)/2)
-        interp_filt = numpy.pad(interp_filt, (0, len(x) - len(interp_filt) + offset))
-
+        # offset = int(len(interp_filt)/2)
+        # interp_filt = numpy.pad(interp_filt, (0, len(x) - len(interp_filt) + offset))
+        #
         # Filtering
-        xfilt = scipy.signal.upfirdn(x, interp_filt, 1, 1)
-
+        # xfilt = scipy.signal.upfirdn(x, interp_filt, 1, 1)
+        #
         # Select useful part of the data and apply integer shift
-        return numpy.roll(xfilt[(offset):(len(x)+offset)], int_shift)
+        #return numpy.roll(xfilt[(offset):(len(x)+offset)], int_shift)
 
+    
 def _design_default_filter(shift, length=INTERP_FILTER_LENGTH, stopband_cutoff_f=STOPBAND_CUTOFF_F, rejection_db=REJECTION_DB):
     """
     Design the interpolation filter
