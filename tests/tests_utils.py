@@ -6,6 +6,8 @@ import scipy.signal
 
 import pyburst.utils as pb
 
+import matplotlib.pyplot as plt
+
 def sinegauss(time, sigma, f, phi):
     return numpy.exp(-time**2/(2*sigma)) * \
         numpy.sin(2 * math.pi * f * time + phi)
@@ -23,38 +25,63 @@ class TestUtils(TestCase):
         """ Test frac_time_shift with sinusoidal signal"""
 
         N = 1024
-        delays = (1.5, 7/6, numpy.random.rand()) 
-        time = numpy.arange(N)
+        shifts = (0.5, 1/6, numpy.random.uniform(low=-5, high=+5)) 
+        time = numpy.arange(-N/2,N/2)
         sigma = N/4
 
-        for delay in delays:
-            time_shifted = time + delay
+        for shift in shifts:
+
+            error = []
+            time_shifted = time - shift
             
-            for f in numpy.arange(N/2)/N:
+            for f in numpy.arange(math.floor((pb.STOPBAND_CUTOFF_F-pb.ROLL_OFF_WIDTH) * N))/N:
                 phi =  2 * math.pi * numpy.random.rand()
                 signal = sinegauss(time, sigma, f, phi)
-                estimate_shifted = pb.frac_time_shift(signal, delay)
+                estimate_shifted = pb.frac_time_shift(signal, shift)
                 exact_shifted = sinegauss(time_shifted, sigma, f, phi)
                 error = numpy.max(numpy.abs(estimate_shifted-exact_shifted))
-                
                 self.assertLess(error, 10**pb.LOG10_REJECTION)
+                        
+            # ax1 = plt.subplot(2, 2, 1)
+            # ax1.semilogy(error)
+            # ax1.grid()
+            
+            # ax2 = plt.subplot(2, 2, 2)
+            # # plt.plot(signal, label='orig')
+            # ax2.plot(estimate_shifted, label='shift')
+            # ax2.plot(exact_shifted, '.', label='exact')
+            # ax2.grid()
+            # # plt.plot(numpy.abs(estimate_shifted-exact_shifted), label='error')
+            # ax2.legend()
 
+            # ax3 = plt.subplot(2, 2, 3)
+            # ax3.plot(pb._design_default_filter(shift))
+            
+            # plt.show()
+    
+            
     def test_frac_time_shift_with_random(self):
         """ Test frac_time_shift with a random signal"""
         
         N = 1024
-        p = 6
-        q = 7
+        p,q = (6, 7) # resampling parameters
         b, a = scipy.signal.butter(10,.25)
-        delays = (1.5, 7/6, numpy.random.rand()) 
+        shifts = (0.5, 1/6, numpy.random.uniform(low=-5, high=+5)) 
         
-        for delay in delays:
+        for shift in shifts:
             
             noise = numpy.pad(numpy.random.rand(N//2), (N//4, N//4))
             filt_noise = scipy.signal.filtfilt(b, a, noise)
 
-            res1 = pb.frac_time_shift(scipy.signal.resample_poly(filt_noise, p, q), delay)
-            res2 = scipy.signal.resample_poly(pb.frac_time_shift(filt_noise, delay), p, q)
+            res1 = pb.frac_time_shift(scipy.signal.resample_poly(filt_noise, p, q), shift)
+            res2 = scipy.signal.resample_poly(pb.frac_time_shift(filt_noise, shift), p, q)
             error = numpy.max(numpy.abs(res1-res2))
+
+            # plt.plot(noise, label='orig')
+            plt.plot(numpy.abs(res1-res2))
+            # plt.plot(res1, label='resamp/shift')
+            # plt.plot(res2, '.', label='shift/resamp')
+            # plt.legend()
+            plt.show()
 
             self.assertLess(error, 10**pb.LOG10_REJECTION)

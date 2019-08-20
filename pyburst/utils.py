@@ -15,7 +15,7 @@
 
 import math
 import numpy
-from scipy.signal import upfirdn
+import scipy.signal, scipy.special, scipy.interpolate
 
 # Default parameters for the interpolator filter
 LOG10_REJECTION = -3.0
@@ -76,27 +76,43 @@ def frac_time_shift(x, shift, interp_filt=None):
         frac_shift = shift - int_shift
 
         if interp_filt is None:
-
-            # Compute the ideal (sinecard) interpolation filter
-            time = numpy.arange(-HALF_INTERP_FILTER_LENGTH, HALF_INTERP_FILTER_LENGTH+1)
-            sinc_filter = 2 * STOPBAND_CUTOFF_F * \
-                              numpy.sinc(2 * STOPBAND_CUTOFF_F * (time-frac_shift))
-
-            # Window ideal (sincard) filter
-            interp_filt = sinc_filter * \
-                            numpy.kaiser(INTERP_FILTER_LENGTH, _kaiser_beta(REJECTION_DB))
-
-        offset = int(len(interp_filt)/2)
-                              
+            interp_filt = _design_default_filter(frac_shift)  
+                                         
         # Pre and postpad filter response
-        interp_filt = numpy.pad(interp_filt, \
-                                (len(interp_filt), len(x)  + offset))
+        offset = int(len(interp_filt)/2)
+        interp_filt = numpy.pad(interp_filt, (0, len(x) - len(interp_filt) + offset))
 
         # Filtering
-        xfilt = upfirdn(x, interp_filt , 1, 1)
+        xfilt = scipy.signal.upfirdn(x, interp_filt , 1, 1)
 
-        return numpy.roll(xfilt[offset+1:offset+1+len(x)], int_shift)
-                      
+        # Select useful part of the data and apply integer shift
+        return numpy.roll(xfilt[(offset):(len(x)+offset)], -int_shift)
+
+def _design_default_filter(shift, length=INTERP_FILTER_LENGTH, stopband_cutoff_f=STOPBAND_CUTOFF_F, rejection_db=REJECTION_DB):
+    """
+    Design the interpolation filter
+    """
+
+    if numpy.abs(shift) > 1:
+        shift = shift - numpy.fix(shift)
+
+    # Change length to next odd number
+    if length % 2 == 0:
+        length = length + 1
+
+    half_length = (length-1)/2
+        
+    # Compute the ideal (sinecard) interpolation filter
+    time = numpy.arange(-half_length, half_length+1)
+    sinc_filter = 2 * stopband_cutoff_f * \
+                  numpy.sinc(2 * stopband_cutoff_f * (time - shift))
+
+    # Compute taper window
+    window = _kaiser(length, _kaiser_beta(rejection_db), shift)
+    # window = scipy.interpolate.interp1d(time, kaiser,kind='cubic',fill_value='extrapolate')(time + shift)
+
+    return sinc_filter * window
+    
 def _kaiser_beta(rejection_db):
     """
     Determine the beta parameter for the Kaiser taper window
@@ -110,3 +126,17 @@ def _kaiser_beta(rejection_db):
     else:
         return 0.0
 
+def _kaiser(length, beta, shift=0):
+    """
+    Compute a Kaiser window with parameter beta and possibly 
+    non-integer shift
+    """
+
+    # Generate shifted x-axis to compute the Kaiser window
+    x = numpy.arange(length, dtype=numpy.complex64) - shift
+    # Set the type to complex valued as the sqrt in the 
+    # following computation can lead to imaginary numbers
+    x = 2 * beta / (length-1) * numpy.sqrt(x * (length-1 - x))
+    # Use scipy.special.iv instead of numpy.i0 because this function
+    # is able to handle complex numbers
+    return numpy.real(scipy.special.iv(0,x)/scipy.special.iv(0,beta))
