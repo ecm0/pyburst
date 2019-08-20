@@ -83,10 +83,10 @@ def frac_time_shift(x, shift, interp_filt=None):
         interp_filt = numpy.pad(interp_filt, (0, len(x) - len(interp_filt) + offset))
 
         # Filtering
-        xfilt = scipy.signal.upfirdn(x, interp_filt , 1, 1)
+        xfilt = scipy.signal.upfirdn(x, interp_filt, 1, 1)
 
         # Select useful part of the data and apply integer shift
-        return numpy.roll(xfilt[(offset):(len(x)+offset)], -int_shift)
+        return numpy.roll(xfilt[(offset):(len(x)+offset)], int_shift)
 
 def _design_default_filter(shift, length=INTERP_FILTER_LENGTH, stopband_cutoff_f=STOPBAND_CUTOFF_F, rejection_db=REJECTION_DB):
     """
