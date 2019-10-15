@@ -2,9 +2,8 @@
 Data analysis algorithm for unmodeled gravitational-wave transient signals
 **************************************************************************
 
-Installation instructions
+Installation instructions::
 
-::
   python3 -m venv pyburst_dev
   source pyburst_dev/bin/activate
   (venv) pip install ipykernel
