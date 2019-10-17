@@ -19,6 +19,6 @@ Installation instructions with conda::
   (pyburst_dev) conda config --append channels conda-forge
   (pyburst_dev) conda config --append channels ltfatpy
   (pyburst_dev) conda install --file requirements.txt
-  
-Note: developers should execute:
+
+Note: developers should execute
   (pyburst_dev) conda-develop pyburst
