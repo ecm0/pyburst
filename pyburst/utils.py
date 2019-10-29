@@ -15,23 +15,36 @@
 
 import math
 import numpy
+# numpy.fft import fft, ifftshift, ifft
+
 import scipy.signal, scipy.special, scipy.interpolate
 
-# Default parameters for the interpolator filter
+## frac time shift: default parameters for the interpolator filter
 LOG10_REJECTION = -3.0
 REJECTION_DB = -20 * LOG10_REJECTION
 
 STOPBAND_CUTOFF_F = 0.5
 ROLL_OFF_WIDTH = STOPBAND_CUTOFF_F / 10  
-## determine filter length
-## use empirical formula from [1] Chap 7, Eq. (7.63) p 476
+
+## To determine the filter length, we use
+## the empirical formula from [1] Chap 7, Eq. (7.63) p 476
 HALF_INTERP_FILTER_LENGTH = math.ceil((REJECTION_DB-8.0) / (28.714 * ROLL_OFF_WIDTH))
 INTERP_FILTER_LENGTH = 2 * HALF_INTERP_FILTER_LENGTH + 1
+
+## delayseq: empirical roll-off and rejection
+## for the FFT-based interpolation filter
+DELAYSEQ_ROLL_OFF = 0.1553
+DELAYSEQ_LOG10_REJECTION = -3.0
 
 def next_odd(n):
     """ Compute the next odd number
     """
     return math.ceil(n) // 2 * 2 + 1
+
+def next_pow2(n):
+    """ Compute the next power of two
+    """
+    return 2 ** (int(n) - 1).bit_length()
 
 def pseudoinverse(a, rcond=1e-15):
     """
@@ -147,3 +160,26 @@ def _kaiser(length, beta, shift=0):
     # Use scipy.special.iv instead of numpy.i0 because this function
     # is able to handle complex numbers
     return numpy.real(scipy.special.iv(0,x)/scipy.special.iv(0,beta))
+
+def delayseq(x, shift):
+    """
+    Shift the input time series by a (possible fractional) number of samples
+    using an frequency-domain algorithm that applies frequency-dependent phase shift
+    after transforming the input signal using FFT
+
+    x: input timeseries (Numpy array)
+    shift: shift in (possibly non-integer) number of samples (scalar)
+    """
+    
+    if float(shift).is_integer():
+        return numpy.roll(x, int(shift))
+
+    int_shift = int(numpy.fix(shift))
+    frac_shift = shift - int_shift
+    
+    nfft = next_pow2(x.size + int_shift)
+    freqs = 2 * math.pi * numpy.fft.ifftshift((numpy.arange(nfft) - nfft // 2)) / nfft
+    tmp = numpy.fft.ifft(numpy.fft.fft(x, nfft)  \
+                                     * numpy.exp(-1j * frac_shift * freqs)).real
+
+    return numpy.roll(tmp[:x.size], int_shift)
