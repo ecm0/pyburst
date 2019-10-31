@@ -19,7 +19,15 @@ class TestUtils(TestCase):
         self.assertEqual(pb.next_odd(2), 3)
         self.assertEqual(pb.next_odd(3), 3)
         self.assertEqual(pb.next_odd(4), 5)
-    
+
+    def test_frac_time_shift_output_size(self):
+        """ Test frac_time_shift: check input and output sizes match"""
+
+        N = 1024
+        shift = numpy.random.uniform(low=-5, high=+5)
+        shifted = pb.frac_time_shift(numpy.zeros(N), shift)
+        self.assertEqual(shifted.size, N)
+        
     def test_frac_time_shift_with_sinus(self):
         """ Test frac_time_shift with sinusoidal signal"""
 
@@ -90,7 +98,15 @@ class TestUtils(TestCase):
             
             self.assertLess(error, 10**pb.LOG10_REJECTION)
 
-    def test_delayseq_time_shift_with_sinus(self):
+    def test_delayseq_output_size(self):
+        """ Test delayseq: check input and output sizes match"""
+
+        N = 1024
+        shift = numpy.random.uniform(low=-5, high=+5)
+        shifted = pb.delayseq(numpy.zeros(N), shift)
+        self.assertEqual(shifted.size, N)
+
+    def test_delayseq_with_sinus(self):
         """ Test delayseq with sinusoidal signal"""
 
         N = 1024
