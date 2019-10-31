@@ -93,7 +93,7 @@ def frac_time_shift(x, shift, interp_filt=None):
         # Using numpy.convolve as this is the fastest convolution method
         # for small number of taps according to
         # https://scipy-cookbook.readthedocs.io/items/ApplyFIRFilter.html
-        return numpy.roll(numpy.convolve(interp_filt, x, mode='same'), int_shift)
+        return numpy.roll(numpy.convolve(x, interp_filt, mode='same'), int_shift)
 
         # Earlier implementation using polyphase resampling
         #
