@@ -81,7 +81,7 @@ class TimeFreq(object):
         """
         Returns the frequency axis of the time-frequency map
         """
-        return sampling_freq * numpy.arange(self.data.shape[0])/(2 * self.data.shape[0])
+        return sampling_freq * numpy.arange(self.data.shape[0])/(2 * (self.data.shape[0]-1))
  
     def freq_index(self, freq, sampling_freq=1):
         """
