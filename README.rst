@@ -21,4 +21,4 @@ Installation instructions with conda::
   (pyburst_dev) conda install --file requirements.txt
 
 Note: developers should execute
-  (pyburst_dev) conda-develop pyburst
+  (pyburst_dev) conda-develop .
