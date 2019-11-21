@@ -11,9 +11,13 @@ class TimeFreqTransform(object):
     def __init__(self, transform, window_type, time_step, num_freqs):
         """
         transform -- type of the time-frequency transform
-        window_type -- type of the analysis window (string)
+        window_type -- type of the analysis/synthesis window (string)
         time_step -- size of the time step
         num_freqs -- number of frequencies
+
+        Note: the direct window is used for the synthesis, and the dual 
+        window is used for the analysis. The reconstructed signal can be
+        written as the sum of modulated windows.
         """
         
         self.transform = transform
