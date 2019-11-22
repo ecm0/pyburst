@@ -1,7 +1,11 @@
 import math
 import numpy
+import logging
 
-from ltfatpy import dgtreal, idgtreal
+from ltfatpy import dgt, idgt, dgtreal, idgtreal, gabwin
+from ltfatpy.gabor.gabdual import gabdual
+
+import pyburst.utils
 
 class TimeFreqTransform(object):
     """A TimeFreqTransform object characterizes a time-frequency transformation
@@ -40,6 +44,10 @@ class TimeFreqTransform(object):
         if self.transform == 'dgtreal':
             out,_,_ = dgtreal(data, self.analysis_window, \
                               self.time_step, self.num_freqs)
+            return TimeFreq(self, out, data.size)
+        elif self.transform == 'dgt':
+            out,_,_ = dgt(data, self.analysis_window, \
+                              self.time_step, self.num_freqs)
             return TimeFreq(self, out, data.size)         
         # elif test expression:
         else: 
@@ -55,10 +63,31 @@ class TimeFreqTransform(object):
         if self.transform == 'dgtreal':
             return idgtreal(data, self.synthesis_window, \
                             self.time_step, self.num_freqs)
+        elif self.transform == 'dgt':
+            return idgt(data, self.synthesis_window, \
+                              self.time_step, self.num_freqs)
         # elif test expression:
         else: 
             logging.warning("Unknown transform")
             return None
+
+    def reduced_kernel(self, delay=0):
+        """
+        Returns a reduced form of the reproducing kernel, with
+        optionally a (possibly fractional) time shift.
+        The kernel is reduced to its components at freq=0.
+        The anticipated relative error due to this reduction 
+        is also returned.
+        """
+        # assert delay < dualwin.size
+
+        synth_window = gabwin(self.synthesis_window, \
+                              self.time_step, \
+                              self.num_freqs)
+        tfmap = self.forward(utils.delayseq(numpy.fft.fftshift(synth_window), \
+                                      delay))
+        normalized_map = tfmap.data/np.linalg.norm(tfmap.data)
+        return normalized_map[0,:], numpy.sum(normalized_map[1:,:])
 
 class TimeFreq(object):
     """A TimeFreq object characterizes the time-frequency map 
@@ -85,7 +114,8 @@ class TimeFreq(object):
         """
         Returns the frequency axis of the time-frequency map
         """
-        return sampling_freq * numpy.arange(self.data.shape[0])/(2 * (self.data.shape[0]-1))
+        return sampling_freq * numpy.arange(self.data.shape[0]) \
+            /(2 * (self.data.shape[0]-1))
  
     def freq_index(self, freq, sampling_freq=1):
         """
@@ -121,6 +151,20 @@ class TimeFreq(object):
         self.data[0:self.freq_index(cutoff_freq, sampling_freq)] = 0
         return self
 
+    def timeshift(self, delay):
+        """
+        Shift the time-frequency map by a (possibly fractional) number of samples
+        by an approximate kernel-based interpolation method.
+        """
+        
+        kernel, error_estimate = self.transform.reduced_kernel(delay)
+        tfmap = numpy.exp(-2j * math.pi * delay * self.freqs()) * \
+                   numpy.apply_along_axis(np.convolve, 1, \
+                                          self.data, kernel, \
+                                          'same')        
+
+        return TimeFreq(self.transform, tfmap, self.original_size)
+    
     def marginal(self, axis='freq', method='medianmean'):
         """
         Marginalize time-freq map in time or freq using
