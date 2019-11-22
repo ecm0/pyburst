@@ -12,18 +12,43 @@ def sinegauss(time, sigma, f, phi):
 
 class TestUtils(TestCase): 
 
-    def test_transform(self):
-        """Test forward transform"""
+    def test_transform_dgt(self):
+        """Test dgt transform"""
 
         N = 1024
         signal = numpy.zeros(N)
         tfrep = tf.TimeFreqTransform("dgt", "hanning", 64, 512)
         tfmap = tfrep.forward(signal)
-        self.assertTrue(numpy.all(tfmap.data==0))
+        rec = tfrep.backward(tfmap.data)
+
+        self.assertEqual(tfmap.data.shape[0], 512)
+        self.assertEqual(tfmap.data.shape[1], N/64)
+        self.assertTrue(numpy.all(rec==0))
+
+    def test_transform_dgtreal(self):
+        """Test dgtreal transform"""
+
+        N = 1024
+        signal = numpy.zeros(N)
+        tfrep = tf.TimeFreqTransform("dgtreal", "hanning", 64, 512)
+        tfmap = tfrep.forward(signal)
+        rec = tfrep.backward(tfmap.data)
         
-#     def test_inversion_ok(self):
-#        """Test forward/backward transform inversion"""
+        self.assertEqual(tfmap.data.shape[0], 257)
+        self.assertEqual(tfmap.data.shape[1], N/64)
+        self.assertTrue(numpy.all(rec==0))
         
+    def test_inversion(self):
+        """Test forward/backward transform inversion"""
+        
+        N = 1024
+        signal = numpy.random.normal(0, 1, N)
+        tfrep = tf.TimeFreqTransform("dgtreal", "hanning", 64, 512)
+        tfmap = tfrep.forward(signal)
+        rec = tfrep.backward(tfmap.data)
+        
+        self.assertTrue(numpy.allclose(numpy.abs(signal-rec), 0))
+
 #    def test_timeshift_output_size(self):
 #        """ Test frac_time_shift: check input and output sizes match"""
 #
