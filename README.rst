@@ -8,7 +8,6 @@ Installation instructions with pip::
   source pyburst_dev/bin/activate
   (venv) pip install ipykernel
   (venv) pip install < pyburst/requirements.txt
-  (venv) ipython kernel install --user --name=pyburst
   (venv) cd pyburst/
   (venv) pip install -e .
   
@@ -22,3 +21,7 @@ Installation instructions with conda::
 
 Note: developers should execute
   (pyburst_dev) conda-develop .
+  
+Create dedicated jupyter-notebook kernel::
+
+  (venv) ipython kernel install --user --name=pyburst
