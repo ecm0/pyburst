@@ -154,7 +154,7 @@ class Skymap(object):
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
         self.nside = nside
         self.order = order
-        self.coordsystem = Coordsystem(coordsystem)
+        self.coordsystem = coordsystem
         self.data = numpy.empty(healpy.nside2npix(nside)) if array is None else array
         
     def is_nested(self):
