@@ -75,29 +75,39 @@ class Detector(object):
         else:
             return f[:,0], f[:,1] # fplus, fcross
     
-    def project_strain(self, hplus, hcross, time, ra, dec, psi):
+    def project_strain(self, hplus, hcross, skypoint, psi):
         """ Project hplus and hcross onto the detector frame 
         assuming a given sky location and polarization of the source.
         Apply consistent time delay due to wave propagation.
-        
+        Use the epoch stored in hplus and hcross to convert
+        between coordinate systems.
+
         hplus, hcross: plus and cross polarisation (REAL8TimeSeries)
-        ra: right ascension in radians
-        dec: declination in radians
+        skypoint: Skypoint object
         psi: polarization angle in radians
 
         """
 
         assert hplus.data.length == hcross.data.length
         assert hplus.deltaT == hcross.deltaT
-                        
+
+        skypoint.coordsystem.is_valid()
+
+        # We need to convert to the equatorial lalsimulation.SimDetectorStrainREAL8TimeSeries
+        if skypoint.coordsystem.name != 'equatorial':
+            coords = skypoint.transformed_to('equatorial', hplus.epoch) \
+                             .coords(fmt='lonlat',unit='radians')
+        else:
+            coords = skypoint.coords(fmt='lonlat',unit='radians')
+
         return TimeSeries.from_lal(SimDetectorStrainREAL8TimeSeries( \
                                         hplus, hcross, \
-                                        ra, dec, psi, \
+                                        *coords, psi, \
                                         self.descriptor))
 
     def time_delay_from_earth_center(self, skypoints, ref_time=None):
         """ Returns the time delay from the earth center
-            skypoints: Skypoint object or list of Skypoint objects
+            skypoints: Skypoint object or list of Skypoint objects (in the same coordinate system)
             ref_time: reference time when using the equatorial coordinate system
         """
 
