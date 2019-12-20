@@ -93,7 +93,8 @@ class Detector(object):
 
         skypoint.coordsystem.is_valid()
 
-        # We need to convert to the equatorial lalsimulation.SimDetectorStrainREAL8TimeSeries
+        # We convert sky coordinate to the equatorial frame
+        # and use lalsimulation.SimDetectorStrainREAL8TimeSeries()
         if skypoint.coordsystem.name != 'equatorial':
             coords = skypoint.transformed_to('equatorial', hplus.epoch) \
                              .coords(fmt='lonlat',unit='radians')
