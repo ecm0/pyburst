@@ -59,13 +59,15 @@ class Skypoint(object):
         """
         lon -- longitude or right ascension (in radians)
         lat -- latitude or declination (in radians)
-        coordsystem -- coordinate system descriptor (str or Coordsystem)
+        coordsystem -- Coordsystem object that describes the coordinate system
         label -- optional qualifying label
         """
         
+        coordsystem.is_valid()
+        
         self.lon = lon
         self.lat = lat
-        self.coordsystem = Coordsystem(coordsystem)
+        self.coordsystem = coordsystem
         self.label = label
     
     def __str__(self):
@@ -98,12 +100,10 @@ class Skypoint(object):
             logging.warning('Unknown unit')
             return None
             
-    def transformed_to(self, coordsystem, time):
+    def transformed_to(self, coordsystem, label=''):
         """
         Transforms to another coordinates system
         """
-    
-        coordsystem = Coordsystem(coordsystem)
     
         if self.coordsystem == coordsystem:
             logging.warning('Attempt to transform to same coordinate system')
@@ -115,10 +115,11 @@ class Skypoint(object):
         input.system = self.coordsystem.to_lal()
 
         output = lal.SkyPosition()
-
-        self.coordsystem.transforms_to(coordsystem)(output,input,time)
         
-        return Skypoint(output.longitude, output.latitude, coordsystem.name, self.label)
+        self.coordsystem.transforms_to(coordsystem)(output,input,coordsystem.ref_time)
+
+        label = " ".join(self.label, label) if label else self.label
+        return Skypoint(output.longitude, output.latitude, coordsystem, label)
 
     def mirror(self):
         return Skypoint((self.lon + math.pi) % (2 * math.pi), -self.lat, \
@@ -145,16 +146,19 @@ class Skymap(object):
         grid: HEALPix map object
         nside: HEALPix nside parameter (int, power of 2)
         order: pixel ordering scheme of the HEALPix map
-        coordsystem: name of the coordinate system (str) in the list supported by the LAL library
-        Note: the HEALPix map is initialized with a dummy ICRS coordinate frame,
-        that is not used. The 
-        The reason for this healpy nor astropy do not support ECEF/Geographic coordinate systems (yet)
+        coordsystem: Coordsystem object that describes the coordinate system  
+        Note: 
+        The HEALPix map used for the grid is initialized with a dummy ICRS 
+        coordinate frame, that is not used in practise as healpy nor astropy 
+        don't support ECEF/Geographic coordinate systems. 
+        Instead the grid coordinates are defined through a coordinate system
+        obtained from the LAL library.
         """
             
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
         self.nside = nside
         self.order = order
-        self.coordsystem = Coordsystem(coordsystem)
+        self.coordsystem = coordsystem
         self.data = numpy.empty(healpy.nside2npix(nside)) if array is None else array
         
     def is_nested(self):
@@ -183,7 +187,7 @@ class Skymap(object):
                                 nest=self.is_nested())
         return self.data[idx]
     
-    def transformed_to(self, coordsystem_name, time):
+    def transformed_to(self, coordsystem):
         """
         Transforms the skymap to another coordinate system
         """
@@ -194,7 +198,7 @@ class Skymap(object):
                                     nest=self.is_nested())
         
         # Map target to original coordinates
-        points = [Skypoint(l, math.pi/2-c, coordsystem_name).transformed_to(self.coordsystem.name, time) \
+        points = [Skypoint(l, math.pi/2-c, coordsystem).transformed_to(self.coordsystem) \
                                   for l, c in zip(lon, colat)]
         
         # Transform the list of coordinate tuples [(lon, lat), ...] into two lists [lons, lats]
@@ -207,7 +211,7 @@ class Skymap(object):
         
         # Create target skymap and set its coordinate system
         out = self.feed(data_rot)
-        out.coordsystem = Coordsystem(coordsystem_name)
+        out.coordsystem = coordsystem
  
         return out
     
