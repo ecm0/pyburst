@@ -165,7 +165,7 @@ class Skymap(object):
         return self.order == 'nested'
 
     def grid_points(self):
-        return [Skypoint(math.radians(p.ra.value), math.radians(p.dec.value), self.coordsystem.name) \
+        return [Skypoint(math.radians(p.ra.value), math.radians(p.dec.value), self.coordsystem) \
                 for p in self.grid.healpix_to_skycoord(range(self.grid.npix))]
 
     def feed(self, data):
@@ -221,7 +221,7 @@ class Skymap(object):
         """
         
         coords = healpy.pix2ang(self.nside,numpy.argmin(self.data), nest=self.is_nested())
-        return Skypoint(coords[1], math.pi/2-coords[0], self.coordsystem.name, \
+        return Skypoint(coords[1], math.pi/2-coords[0], self.coordsystem, \
                              label + " (val={0:.2f})".format(numpy.min(self.data)))
     
     def display(self, title, cmap_name='gray_r'):
