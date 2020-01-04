@@ -26,6 +26,8 @@ from lalsimulation import SimDetectorStrainREAL8TimeSeries
 import gwpy
 from gwpy.timeseries import TimeSeries
 
+from pyburst.skymaps import Coordsystem
+
 class Detector(object):
     """
     A Detector object characterises a gravitational wave (GW) interferometric detector
@@ -96,7 +98,7 @@ class Detector(object):
         # We convert sky coordinate to the equatorial frame
         # and use lalsimulation.SimDetectorStrainREAL8TimeSeries()
         if skypoint.coordsystem.name != 'equatorial':
-            coords = skypoint.transformed_to('equatorial', hplus.epoch) \
+            coords = skypoint.transformed_to(Coordsystem('equatorial', hplus.epoch)) \
                              .coords(fmt='lonlat',unit='radians')
         else:
             coords = skypoint.coords(fmt='lonlat',unit='radians')
