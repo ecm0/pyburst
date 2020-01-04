@@ -10,7 +10,8 @@ import pyburst.skymaps as pb
 
 NSIDE = 32
 TIME = lal.LIGOTimeGPS(630720013) # Jan 1 2000, 00:00 UTC
-COORD_SYS = 'equatorial'
+COORD_SYS_EQUATORIAL = pb.Coordsystem('equatorial', TIME)
+COORD_SYS_GEOGRAPHIC = pb.Coordsystem('geographic', TIME)
 
 class TestCoordsystem(TestCase):
 
@@ -34,11 +35,11 @@ class TestSkypoint(TestCase):
 
     def test_initskypoint(self):
         try:
-            p = pb.Skypoint(0, 0, 'equatorial')
+            p = pb.Skypoint(0, 0, COORD_SYS_EQUATORIAL)
         except Exception:
             self.fail('Skypoint instantiation failed')
         try:
-            p = pb.Skypoint(0, 0, 'geographic')
+            p = pb.Skypoint(0, 0, COORD_SYS_GEOGRAPHIC)
         except Exception:
             self.fail('Skypoint instantiation failed')
 
@@ -47,9 +48,9 @@ class TestSkypoint(TestCase):
         """ Check reversibility of coordinate conversion
         """
         coords = numpy.array([uniform(0,360), uniform(-90,90)])
-        pt_orig = pb.Skypoint(*numpy.radians(coords), 'equatorial', '')
-        pt_geo = pt_orig.transformed_to('geographic', TIME)
-        pt_eq = pt_geo.transformed_to('equatorial', TIME)
+        pt_orig = pb.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL, '')
+        pt_geo = pt_orig.transformed_to(COORD_SYS_GEOGRAPHIC)
+        pt_eq = pt_geo.transformed_to(COORD_SYS_EQUATORIAL)
 
         self.assertAlmostEqual(pt_orig.lon, pt_eq.lon, places=7)
         self.assertAlmostEqual(pt_orig.lat, pt_eq.lat, places=7)
@@ -61,11 +62,11 @@ class TestSkymap(TestCase):
 
         # Generate a random skypoint
         coords = numpy.array([uniform(0,360), uniform(-90,90)])
-        p = pb.Skypoint(*numpy.radians(coords), COORD_SYS)
+        p = pb.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
 
         # Generate skymap and set all pixel values to zero
         zeros = numpy.zeros(healpy.nside2npix(NSIDE))
-        sky = pb.Skymap(NSIDE, COORD_SYS, order='nested', array=zeros)
+        sky = pb.Skymap(NSIDE, COORD_SYS_EQUATORIAL, order='nested', array=zeros)
 
         # Set value of selected pixel to 1.0
         idx = healpy.ang2pix(NSIDE,*p.coords(),nest=True)
