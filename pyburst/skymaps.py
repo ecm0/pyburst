@@ -123,7 +123,7 @@ class Skypoint(object):
 
     def mirror(self):
         return Skypoint((self.lon + math.pi) % (2 * math.pi), -self.lat, \
-                        self.coordsystem.name, "Mirror of " + self.label)
+                        self.coordsystem, "Mirror of " + self.label)
     
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
