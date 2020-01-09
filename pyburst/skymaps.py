@@ -31,13 +31,13 @@ class Coordsystem(object):
             
             self.name = name
             self.ref_time = ref_time
-            self.is_valid()
+            assert self.is_valid()
             
         def __str__(self):
             return self.name
         
         def is_valid(self):
-            assert self.name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
+            return self.name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
         
         def to_lal(self):
             return COORD_SYSTEMS[self.name]
@@ -63,7 +63,7 @@ class Skypoint(object):
         label -- optional qualifying label
         """
         
-        coordsystem.is_valid()
+        assert coordsystem.is_valid()
         
         self.lon = lon
         self.lat = lat
