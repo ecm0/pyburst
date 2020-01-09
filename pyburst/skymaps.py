@@ -63,7 +63,7 @@ class Skypoint(object):
         label -- optional qualifying label
         """
         
-        assert coordsystem.is_valid()
+        assert coordsystem.is_valid(),  "Unsupported coord transformation"
         
         self.lon = lon
         self.lat = lat
@@ -154,7 +154,9 @@ class Skymap(object):
         Instead the grid coordinates are defined through a coordinate system
         obtained from the LAL library.
         """
-            
+
+        assert len(data) == healpy.nside2npix(nside), "Data array has incorrect size"
+        
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
         self.nside = nside
         self.order = order
