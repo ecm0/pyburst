@@ -21,7 +21,9 @@ SAMPLING_RATE = 4096.0 # Hz
 T = numpy.arange(int(SAMPLING_RATE))/SAMPLING_RATE
 
 F0 = 200 # Hz
-SINE_1_SEC = numpy.sin(2*math.pi*F0*T)
+phi0 = math.radians(uniform(0,180))
+COS_1_SEC = numpy.cos(2*math.pi*F0*T + phi0)
+SIN_1_SEC = numpy.sin(2*math.pi*F0*T + phi0)
 ZEROS_1_SEC = numpy.zeros(int(SAMPLING_RATE))
 ZEROS_5_SEC = numpy.zeros(int(5 * SAMPLING_RATE))
 
@@ -64,7 +66,7 @@ class TestDetector(TestCase):
         d = pb.detectors.Detector(random.choice(DETECTORS))
         delay = d.time_delay_from_earth_center(pt_eq, TIME)
     
-        hplus = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
@@ -101,7 +103,7 @@ class TestDetector(TestCase):
         d = pb.detectors.Detector(random.choice(DETECTORS))
         antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
         
-        hplus = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
@@ -140,7 +142,7 @@ class TestDetector(TestCase):
         antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
         
         hplus = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
-        hcross = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hcross = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
             
@@ -193,7 +195,7 @@ class TestDetector(TestCase):
         
         d = pb.detectors.Detector(random.choice(DETECTORS))
     
-        hplus = TimeSeries(SINE_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hplus.epoch = lal.LIGOTimeGPS(TIME)
         hcross.epoch = lal.LIGOTimeGPS(TIME)
@@ -206,3 +208,40 @@ class TestDetector(TestCase):
 
         # self.assertEqual(response_eq, response_geo)
         self.assertTrue(numpy.allclose(numpy.abs(err), 0))
+
+    def test_global_project_strain(self):
+        """ Global consistency check for project_strain() against ad-hoc response computation
+            using delay_seq() and antenna_pattern()
+        """
+
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        psi = math.radians(uniform(0,180))
+        
+        pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
+        d = pb.detectors.Detector(random.choice(DETECTORS))
+        antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
+        delay = d.time_delay_from_earth_center(pt_eq, TIME)
+        
+        hplus = TimeSeries(COS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hcross = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        hplus.epoch = lal.LIGOTimeGPS(TIME)
+        hcross.epoch = lal.LIGOTimeGPS(TIME)
+            
+        # Project wave onto detector
+        response = d.project_strain(hplus, hcross, pt_eq, psi)
+                
+        # Generate support timeseries
+        data = TimeSeries(ZEROS_5_SEC, \
+                          sample_rate=SAMPLING_RATE, \
+                          t0=TIME-2, unit=response._unit)
+
+        # Inject signal into timeseries
+        h = data.inject(response)
+
+        # Compute ad-hoc response using delayseq()
+        h_adhoc = antenna_pat[0] * delayseq(hplus, delay * SAMPLING_RATE) + \
+                  antenna_pat[1] * delayseq(hcross, delay * SAMPLING_RATE) + \
+
+        # Compare the two responses
+        self.assertTrue(numpy.allclose(numpy.abs(h-h_adhoc), 0))
+
