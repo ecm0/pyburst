@@ -155,7 +155,8 @@ class Skymap(object):
         obtained from the LAL library.
         """
 
-        assert len(data) == healpy.nside2npix(nside), "Data array has incorrect size"
+        if array:
+            assert len(array) == healpy.nside2npix(nside), "Data array has incorrect size"
         
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
         self.nside = nside
