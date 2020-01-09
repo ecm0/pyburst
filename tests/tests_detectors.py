@@ -55,7 +55,18 @@ class TestDetector(TestCase):
         dt_geo = d.time_delay_from_earth_center(pt_geo)
 
         self.assertAlmostEqual(dt_eq, dt_geo, places=5)
-    
+
+    def test_delay_mirror_point(self):
+        """ Check that mirror point has opposite delays
+        """
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
+        d = pb.detectors.Detector(random.choice(DETECTORS))
+        dt_eq = d.time_delay_from_earth_center(pt, ref_time=TIME)
+        dt_mirror = d.time_delay_from_earth_center(pt.mirror(), ref_time=TIME)
+
+        self.assertAlmostEqual(dt_eq, -dt_mirror, places=5)
+        
     def test_delay_project_strain(self):
         """ Check consistency of project_strain() against time_delay_earth_center()
         """
