@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import math
+from math import pi
 import numpy
 from numpy.random import uniform
 import healpy
@@ -42,8 +43,30 @@ class TestSkypoint(TestCase):
             p = pb.Skypoint(0, 0, COORD_SYS_GEOGRAPHIC)
         except Exception:
             self.fail('Skypoint instantiation failed')
+        try:
+            p = pb.Skypoint.from_cart([1, 0, 0], COORD_SYS_GEOGRAPHIC)
+        except Exception:
+            self.fail('Skypoint instantiation failed')
 
+    def test_from_cart_basics(self):
 
+        cartesian_coords = ([1,0,0], [0,1,0], [0,0,1])
+        spherical_coords = ([0,0], [pi/2, 0], [0, pi/2])
+
+        for cart, sph in zip(cartesian_coords, spherical_coords):
+            print(cart)
+            p = pb.Skypoint.from_cart(cart, COORD_SYS_GEOGRAPHIC)
+            self.assertAlmostEqual(p.lon, sph[0], places=7)
+            self.assertAlmostEqual(p.lat, sph[1], places=7)
+
+    def test_sph2cart_inversion(self):
+
+        vec = numpy.array([uniform(0,1), uniform(0,1), uniform(0,1)])
+        vec /= numpy.linalg.norm(vec)
+        p = pb.Skypoint.from_cart(vec, COORD_SYS_GEOGRAPHIC)
+
+        self.assertTrue(numpy.allclose(p.coords('cart'), vec))
+        
     def test_reversibity(self):
         """ Check reversibility of coordinate conversion
         """
@@ -54,7 +77,7 @@ class TestSkypoint(TestCase):
 
         self.assertAlmostEqual(pt_orig.lon, pt_eq.lon, places=7)
         self.assertAlmostEqual(pt_orig.lat, pt_eq.lat, places=7)
-        
+
 class TestSkymap(TestCase):
 
     def test_value(self):
