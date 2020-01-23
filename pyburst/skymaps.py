@@ -57,6 +57,8 @@ class Skypoint(object):
     
     def __init__(self, lon, lat, coordsystem, label=''):
         """
+        Instantiate a SkyPoint from spherical coordinates
+
         lon -- longitude or right ascension (in radians)
         lat -- latitude or declination (in radians)
         coordsystem -- Coordsystem object that describes the coordinate system
@@ -69,7 +71,25 @@ class Skypoint(object):
         self.lat = lat
         self.coordsystem = coordsystem
         self.label = label
-    
+
+    @classmethod
+    def from_cart(cls, xyz, coordsystem, label=''):
+        """
+        Instantiate a SkyPoint from cartesian coordinates
+        The input coordinates must be on the unit sphere
+        
+        xyz -- tuple or Numpy array with the X, Y and Z coordinates
+        coordsystem -- Coordsystem object that describes the coordinate system
+        label -- optional qualifying label        
+        """
+
+        assert coordsystem.is_valid(),  "Unsupported coord transformation"
+        assert math.isclose(numpy.linalg.norm(xyz),1), "Input point should be on the unit sphere"
+
+        return cls(numpy.arctan2(xyz[1], xyz[0]), \
+                   numpy.arctan2(xyz[2], numpy.sqrt(xyz[0]**2 + xyz[1]**2)), \
+                   coordsystem, label)
+        
     def __str__(self):
             return PRETTY_PRINT_POINT_STR.format(self.label, self.coordsystem, \
                                             self.lon, numpy.degrees(self.lon),\
@@ -78,24 +98,29 @@ class Skypoint(object):
     def coords(self, fmt='colatlon', unit='radians'):
         """
         Return the skypoint coordinates in different format and units.
-        When the format is 'colatlon' (default), a tuple with
-        the co-latitude and longitude is returned. 
+        When the format is 'colatlon' (default), the co-latitude and 
+        longitude is returned. 
+        Available formats are 'colatlon', 'latlon', 'lonlat' and 'cart'.
         """
         
         if fmt=='latlon':
-            angles = (self.lat, self.lon)
+            coords = (self.lat, self.lon)
         elif fmt=='colatlon': 
-            angles = (math.pi/2-self.lat, self.lon)
+            coords = (math.pi/2-self.lat, self.lon)
         elif fmt=='lonlat':
-            angles = (self.lon, self.lat)
+            coords = (self.lon, self.lat)
+        elif fmt=='cart' or fmt=='cartesian':
+            return (math.cos(self.lat) * math.cos(self.lon), \
+                    math.cos(self.lat) * math.sin(self.lon), \
+                    math.sin(self.lat))
         else:
             logging.warning('Unknown format')
             return None
         
         if unit=='radians':
-            return angles
+            return coords
         elif unit=='degrees':
-            return map(math.degrees, angles)
+            return map(math.degrees, coords)
         else:
             logging.warning('Unknown unit')
             return None
@@ -129,7 +154,7 @@ class Skypoint(object):
         healpy.projplot(*self.coords(), marker+color, \
                         markersize=6, \
                         label=self.label)
-    
+        
 #        healpy.projplot(*self.coords_deg(), marker+color, \
 #                        markersize=6, \
 #                        label=self.label, \
@@ -155,7 +180,7 @@ class Skymap(object):
         obtained from the LAL library.
         """
 
-        if array is None:
+        if array is not None:
             assert len(array) == healpy.nside2npix(nside), "Data array has incorrect size"
         
         self.grid = HEALPix(nside=nside, order=order, frame=ICRS()) 
