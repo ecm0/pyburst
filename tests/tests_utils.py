@@ -20,6 +20,15 @@ class TestUtils(TestCase):
         self.assertEqual(pb.next_odd(3), 3)
         self.assertEqual(pb.next_odd(4), 5)
 
+    def test_angle_between(self):
+        """ Test of angle between vectors """
+
+        tests = [([1,0,0], [1,0,0], 0), \
+                   ([1,0,0], [0,1,0], math.pi/2), \
+                   ([1,0,0], [0,0,1], math.pi/2)]
+        for v1, v2, res in tests:
+            self.assertEqual(pb.angle_between(v1, v2), res)
+        
     def test_frac_time_shift_output_size(self):
         """ Test frac_time_shift: check input and output sizes match"""
 
@@ -172,3 +181,5 @@ class TestUtils(TestCase):
             # plt.show()
             
             self.assertLess(error, 10**pb.DELAYSEQ_LOG10_REJECTION)
+
+            
