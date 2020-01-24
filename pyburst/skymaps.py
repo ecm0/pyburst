@@ -2,6 +2,8 @@
 import math
 import copy
 import numpy
+import logging
+
 import lal
 import healpy
 from astropy_healpix import HEALPix
@@ -46,7 +48,7 @@ class Coordsystem(object):
             """
             Returns the coordinate transformation function from self to target
             """
-            
+
             assert (self.name,target.name) in COORD_TRANSFORMS.keys(), "Unsupported coord transformation"
             return COORD_TRANSFORMS[(self.name,target.name)]
 
@@ -71,7 +73,6 @@ class Skypoint(object):
         self.lat = lat
         self.coordsystem = coordsystem
         self.label = label
-
         
     @classmethod
     def from_cart(cls, xyz, coordsystem, label=''):
@@ -133,8 +134,8 @@ class Skypoint(object):
     
         assert coordsystem.ref_time is not None, "Target Coordsystem must have a reference time"
 
-        if self.coordsystem == coordsystem:
-            logging.warning('Attempt to transform to same coordinate system')
+        if self.coordsystem.name == coordsystem.name:
+            #logging.warning('Attempt to transform to same coordinate system')
             return self
                      
         input = lal.SkyPosition()
