@@ -11,6 +11,8 @@ from gwpy.timeseries import TimeSeries
 import pyburst as pb
 import pyburst.detectors, pyburst.skymaps
 
+from pyburst.utils import delayseq
+
 import matplotlib.pyplot as plt
 
 TIME = lal.LIGOTimeGPS(630720013) # Jan 1 2000, 00:00 UTC
@@ -57,16 +59,37 @@ class TestDetector(TestCase):
 
         self.assertAlmostEqual(dt_eq, dt_geo, places=5)
 
-    def test_delay_mirror_point(self):
-        """ Check that mirror point has opposite delays
+    def test_delay_antipodal_point(self):
+        """ Check that original and antipodal points have opposite delays
         """
+
         coords = numpy.array([uniform(0,360), uniform(-90,90)])
         pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         d = pb.detectors.Detector(random.choice(DETECTORS))
         dt_eq = d.time_delay_from_earth_center(pt, ref_time=TIME)
-        dt_mirror = d.time_delay_from_earth_center(pt.mirror(), ref_time=TIME)
+        dt_antipodal = d.time_delay_from_earth_center(pt.antipodal(), ref_time=TIME)
 
-        self.assertAlmostEqual(dt_eq, -dt_mirror, places=5)
+        self.assertAlmostEqual(dt_eq, -dt_antipodal, places=5)
+
+    def test_delay_mirror_point(self):
+        """ Check that the original and mirror points have same delays
+        """
+
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
+        network = [pb.detectors.Detector(d) for d in DETECTORS]
+        
+        dt_earth_center_orig = numpy.array([d.time_delay_from_earth_center(pt, \
+                                ref_time=TIME) for d in network])
+        dt_earth_center_mirror = numpy.array([d.time_delay_from_earth_center(pt.mirror(network), \
+                                ref_time=TIME) for d in network])
+        
+        dt_relative_orig = dt_earth_center_orig[1:] - dt_earth_center_orig[0]
+        dt_relative_mirror = dt_earth_center_mirror[1:] - dt_earth_center_mirror[0]
+
+        # print(dt_relative_orig, dt_relative_mirror)
+
+        self.assertTrue(numpy.allclose(dt_relative_orig, dt_relative_mirror))
         
     def test_delay_project_strain(self):
         """ Check consistency of project_strain() against time_delay_earth_center()
@@ -139,8 +162,7 @@ class TestDetector(TestCase):
         print("Exact antenna pattern = {} ; Estimated amplitude = {}".format(antenna_pat[0], estimated_pat))
             
         # Estimate delay from timeseries
-        self.assertAlmostEqual(antenna_pat[0], estimated_pat, places=2)
-            
+        self.assertAlmostEqual(antenna_pat[0], estimated_pat, places=2)    
 
     def test_fcross_project_strain(self):
         """ Check consistency of project_strain() against antenna_pattern()
@@ -174,11 +196,9 @@ class TestDetector(TestCase):
         else:
             estimated_pat = h.min().to_value()
 
-        print("Exact antenna pattern = {} ; Estimated amplitude = {}".format(antenna_pat[0], estimated_pat))
+        print("Exact antenna pattern = {} ; Estimated pattern from amplitude = {}".format(antenna_pat[1], estimated_pat))
             
-        # Estimate delay from timeseries
         self.assertAlmostEqual(antenna_pat[1], estimated_pat, places=2)
-
 
         # Test sky points in grid have similar antennna patterns and delays
 
@@ -220,41 +240,39 @@ class TestDetector(TestCase):
 
         # self.assertEqual(response_eq, response_geo)
         self.assertTrue(numpy.allclose(numpy.abs(err), 0))
-
         
-    # def test_global_project_strain(self):
-    #     """ Global consistency check for project_strain() against ad-hoc response computation
-    #         using delay_seq() and antenna_pattern()
-    #     """
-
-    #     coords = numpy.array([uniform(0,360), uniform(-90,90)])
-    #     psi = math.radians(uniform(0,180))
+        # def test_global_project_strain(self):
+        #     """ Global consistency check for project_strain() against ad-hoc response computation
+        #         using delay_seq() and antenna_pattern()
+        #     """
         
-    #     pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
-    #     d = pb.detectors.Detector(random.choice(DETECTORS))
-    #     antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
-    #     delay = d.time_delay_from_earth_center(pt_eq, TIME)
+        #     coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        #     psi = math.radians(uniform(0,180))
         
-    #     hplus = TimeSeries(COS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
-    #     hcross = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
-    #     hplus.epoch = lal.LIGOTimeGPS(TIME)
-    #     hcross.epoch = lal.LIGOTimeGPS(TIME)
+        #     pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
+        #     d = pb.detectors.Detector(random.choice(DETECTORS))
+        #     antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
+        #     delay = d.time_delay_from_earth_center(pt_eq, TIME)
+        
+        #     hplus = TimeSeries(COS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        #     hcross = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
+        #     hplus.epoch = lal.LIGOTimeGPS(TIME)
+        #     hcross.epoch = lal.LIGOTimeGPS(TIME)
             
-    #     # Project wave onto detector
-    #     response = d.project_strain(hplus, hcross, pt_eq, psi)
-                
-    #     # Generate support timeseries
-    #     data = TimeSeries(ZEROS_5_SEC, \
-    #                       sample_rate=SAMPLING_RATE, \
-    #                       t0=TIME-2, unit=response._unit)
+        #     # Project wave onto detector
+        #     response = d.project_strain(hplus, hcross, pt_eq, psi)
+    
+        #     # Compute ad-hoc response using delayseq()
+        #     resp_adhoc = antenna_pat[0] * delayseq(COS_1_SEC, delay * SAMPLING_RATE) + \
+        #                  antenna_pat[1] * delayseq(SIN_1_SEC, delay * SAMPLING_RATE)
 
-    #     # Inject signal into timeseries
-    #     h = data.inject(response)
+        # Compare the two responses
+        # self.assertTrue(numpy.allclose(numpy.abs(response-resp_adhoc), 0))
 
-    #     # Compute ad-hoc response using delayseq()
-    #     h_adhoc = antenna_pat[0] * delayseq(hplus, delay * SAMPLING_RATE) + \
-    #               antenna_pat[1] * delayseq(hcross, delay * SAMPLING_RATE) + \
+        # ax = plt.subplot(2, 2, 1)
+        # plt.plot(response.data, label='orig')
+        # ax = plt.subplot(2, 2, 2)
+        # ax.plot(resp_adhoc, label='ad-hoc')
+        # ax.legend()
 
-    #     # Compare the two responses
-    #     self.assertTrue(numpy.allclose(numpy.abs(h-h_adhoc), 0))
-
+        # plt.show()
