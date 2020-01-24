@@ -135,3 +135,14 @@ class Detector(object):
                                                    ref_time) for p in skypoints]
     
         return numpy.squeeze(numpy.array(delays))
+
+ 
+def time_delay_rings(detectors, delays):
+    """
+    Return the locii of points with constant delays between each pairs
+    of detectors
+
+    detectors: tuple of detectors
+    delays: delays from 
+    """
+    
