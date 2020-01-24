@@ -72,6 +72,7 @@ class Skypoint(object):
         self.coordsystem = coordsystem
         self.label = label
 
+        
     @classmethod
     def from_cart(cls, xyz, coordsystem, label=''):
         """
@@ -130,6 +131,8 @@ class Skypoint(object):
         Transforms to another coordinates system
         """
     
+        assert coordsystem.ref_time is not None, "Target Coordsystem must have a reference time"
+
         if self.coordsystem == coordsystem:
             logging.warning('Attempt to transform to same coordinate system')
             return self
@@ -143,12 +146,33 @@ class Skypoint(object):
         
         self.coordsystem.transforms_to(coordsystem)(output,input,coordsystem.ref_time)
 
-        label = " ".join(self.label, label) if label else self.label
+        label = " ".join((self.label, label)) if label else self.label
         return Skypoint(output.longitude, output.latitude, coordsystem, label)
 
-    def mirror(self):
+    def antipodal(self):
         return Skypoint((self.lon + math.pi) % (2 * math.pi), -self.lat, \
-                        self.coordsystem, "Mirror of " + self.label)
+                        self.coordsystem, "Antipodal point to " + self.label)
+
+    def mirror(self, detector_triplet):
+        """
+        Compute so-called mirror point with same time-of-flight delays in a
+        network with three detectors
+        """
+        assert len(detector_triplet)==3, "Requires a tuple with 3 detectors"
+        
+        ref = detector_triplet[0]
+        baselines = [d.location-ref.location for d in detector_triplet[1:]]
+        normal_detector_plane = numpy.cross(baselines[0], baselines[1])
+        normal_detector_plane /= numpy.linalg.norm(normal_detector_plane)
+
+        fiducial_coordsystem = Coordsystem('geographic', self.coordsystem.ref_time)
+        source = self.transformed_to(fiducial_coordsystem).coords('cart')
+        
+        mirror = source - 2 * (normal_detector_plane @ source) * normal_detector_plane
+        mirror /= numpy.linalg.norm(mirror)
+
+        return Skypoint.from_cart(mirror, fiducial_coordsystem).transformed_to(self.coordsystem, \
+                                                            "Mirror of " + self.label)
     
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
