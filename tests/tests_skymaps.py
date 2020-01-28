@@ -12,7 +12,7 @@ import pyburst.skymaps as pb
 NSIDE = 32
 TIME = lal.LIGOTimeGPS(630720013) # Jan 1 2000, 00:00 UTC
 COORD_SYS_EQUATORIAL = pb.Coordsystem('equatorial', TIME)
-COORD_SYS_GEOGRAPHIC = pb.Coordsystem('geographic', TIME)
+COORD_SYS_GEOGRAPHIC = pb.Coordsystem('geographic')
 
 class TestCoordsystem(TestCase):
 
@@ -22,7 +22,7 @@ class TestCoordsystem(TestCase):
         except Exception:
             self.fail('Coordsystem instantiation failed')
         try:
-            pb.Coordsystem('equatorial')
+            pb.Coordsystem('equatorial', TIME)
         except Exception:
             self.fail('Coordsystem instantiation failed')
         try:
