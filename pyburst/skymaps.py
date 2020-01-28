@@ -151,6 +151,8 @@ class Skypoint(object):
         """
         Transforms the Skypoint object's coordinates to another coordinate system
 
+        If initial and target coordinate systems have the same type, the reference
+        time is the only parameter that is changed.
         """
     
         if self.coordsystem.has_same_type_as(coordsystem):
@@ -276,7 +278,7 @@ class Skymap(object):
         """
 
         assert len(data) == self.grid.npix, 'Input data has wrong dimensions'
-        out.data = data
+        self.data = data
 
     def value(self, skypoint):
         """
@@ -296,6 +298,9 @@ class Skymap(object):
     def transformed_to(self, coordsystem):
         """
         Transforms the skymap to another coordinate system
+
+        If initial and target coordinate systems have the same type, the reference
+        time of the coordinate system is the only parameter that is changed.
         """
 
         if self.coordsystem.has_same_type_as(coordsystem):
