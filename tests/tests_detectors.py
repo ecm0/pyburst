@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 TIME = lal.LIGOTimeGPS(630720013) # Jan 1 2000, 00:00 UTC
 COORD_SYS_EQUATORIAL = pb.skymaps.Coordsystem('equatorial', TIME)
-COORD_SYS_GEOGRAPHIC = pb.skymaps.Coordsystem('geographic', TIME)
+COORD_SYS_GEOGRAPHIC = pb.skymaps.Coordsystem('geographic')
 
 SAMPLING_RATE = 4096.0 # Hz
 T = numpy.arange(int(SAMPLING_RATE))/SAMPLING_RATE
@@ -34,6 +34,19 @@ DETECTORS = ['H1', 'L1', 'V1']
 
 class TestDetector(TestCase):
 
+    def test_fiducial_equatorial_coordsys(self):
+        """ Check that """
+        
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        pt_geo = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_GEOGRAPHIC)
+        pt_fiducial = pt_geo.transformed_to(pb.detectors.FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO)
+
+        print(pt_geo)
+        print(pt_fiducial)
+        
+        self.assertAlmostEqual(pt_geo.lon, pt_fiducial.lon)
+        self.assertAlmostEqual(pt_fiducial.lat, pt_fiducial.lat)
+
     def test_antenna_pattern(self):
         """ Check consistency of antenna pattern computed using two coordinate systems
         """
@@ -41,8 +54,16 @@ class TestDetector(TestCase):
         pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         pt_geo = pt_eq.transformed_to(COORD_SYS_GEOGRAPHIC)
         d = pb.detectors.Detector(random.choice(DETECTORS))
-        pat_eq = d.antenna_pattern(pt_eq, ref_time=TIME)
-        pat_geo = d.antenna_pattern(pt_geo, ref_time=None)
+
+        pat_eq = d.antenna_pattern(pt_eq)
+        pat_geo = d.antenna_pattern(pt_geo)
+
+        self.assertAlmostEqual(pat_eq[0], pat_geo[0]) # fplus
+        self.assertAlmostEqual(pat_eq[1], pat_geo[1]) # fcross
+
+        # Force evaluation time to TIME (reference time of
+        # the equatorial coord system used here).
+        pat_eq = d.antenna_pattern(pt_eq, time=TIME)
 
         self.assertAlmostEqual(pat_eq[0], pat_geo[0]) # fplus
         self.assertAlmostEqual(pat_eq[1], pat_geo[1]) # fcross
@@ -54,7 +75,7 @@ class TestDetector(TestCase):
         pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         pt_geo = pt_eq.transformed_to(COORD_SYS_GEOGRAPHIC)
         d = pb.detectors.Detector(random.choice(DETECTORS))
-        dt_eq = d.time_delay_from_earth_center(pt_eq, ref_time=TIME)
+        dt_eq = d.time_delay_from_earth_center(pt_eq)
         dt_geo = d.time_delay_from_earth_center(pt_geo)
 
         self.assertAlmostEqual(dt_eq, dt_geo, places=5)
@@ -66,8 +87,8 @@ class TestDetector(TestCase):
         coords = numpy.array([uniform(0,360), uniform(-90,90)])
         pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         d = pb.detectors.Detector(random.choice(DETECTORS))
-        dt_eq = d.time_delay_from_earth_center(pt, ref_time=TIME)
-        dt_antipodal = d.time_delay_from_earth_center(pt.antipodal(), ref_time=TIME)
+        dt_eq = d.time_delay_from_earth_center(pt)
+        dt_antipodal = d.time_delay_from_earth_center(pt.antipodal())
 
         self.assertAlmostEqual(dt_eq, -dt_antipodal, places=5)
 
@@ -79,10 +100,9 @@ class TestDetector(TestCase):
         pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         network = [pb.detectors.Detector(d) for d in DETECTORS]
         
-        dt_earth_center_orig = numpy.array([d.time_delay_from_earth_center(pt, \
-                                ref_time=TIME) for d in network])
-        dt_earth_center_mirror = numpy.array([d.time_delay_from_earth_center(pt.mirror(network), \
-                                ref_time=TIME) for d in network])
+        dt_earth_center_orig = numpy.array([d.time_delay_from_earth_center(pt) for d in network])
+        dt_earth_center_mirror = numpy.array([d.time_delay_from_earth_center(pt.mirror(network)) \
+                                              for d in network])
         
         dt_relative_orig = dt_earth_center_orig[1:] - dt_earth_center_orig[0]
         dt_relative_mirror = dt_earth_center_mirror[1:] - dt_earth_center_mirror[0]
@@ -136,7 +156,7 @@ class TestDetector(TestCase):
         
         pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         d = pb.detectors.Detector(random.choice(DETECTORS))
-        antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
+        antenna_pat = d.antenna_pattern(pt_eq, time=TIME, psi=psi)
         
         hplus = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hcross = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
@@ -173,7 +193,7 @@ class TestDetector(TestCase):
         
         pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         d = pb.detectors.Detector(random.choice(DETECTORS))
-        antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
+        antenna_pat = d.antenna_pattern(pt_eq, time=TIME, psi=psi)
         
         hplus = TimeSeries(ZEROS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
         hcross = TimeSeries(SIN_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
@@ -251,7 +271,7 @@ class TestDetector(TestCase):
         
         #     pt_eq = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
         #     d = pb.detectors.Detector(random.choice(DETECTORS))
-        #     antenna_pat = d.antenna_pattern(pt_eq, ref_time=TIME, psi=psi)
+        #     antenna_pat = d.antenna_pattern(pt_eq, time=TIME, psi=psi)
         #     delay = d.time_delay_from_earth_center(pt_eq, TIME)
         
         #     hplus = TimeSeries(COS_1_SEC, sample_rate=SAMPLING_RATE).to_lal()
