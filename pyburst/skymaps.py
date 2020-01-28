@@ -22,24 +22,44 @@ PRETTY_PRINT_POINT_STR = "{} ({}): lon= {:>+1.8f} rad ({:7.2f} deg) lat= {:>+1.8
 
 class Coordsystem(object):
         """
-        A Coordsystem object characterizes a coordinate system of the celestial sphere
+        A Coordsystem object characterizes a coordinate system of the celestial sphere.
+
+        The geocentric Earth-fixed coordinate system is the primary reference and doesn't
+        not require a reference time. Sky-fixed coordinate systems are considered to move
+        in time, and are characterized by a reference time. This reference will be used
+        to transform between coordinate systems.
         """
     
         def __init__(self, name, ref_time=None):
             """
-            name -- name of the coordinate systems
-            ref_time: reference time when using the equatorial coordinate system
+            name -- name of the coordinate system
+            ref_time: reference time for sky-fixed coordinate systems
+            ref_time is None for the Earth-fixed (geocentric) coordinate system.
             """
-            
+
             self.name = name
+            assert self.is_valid(), "Unsupported coordinate system"
+            
+            if name=='geographic':
+                assert ref_time is None, \
+                    'ref_time must be None for Earth-fixed coordinate system'
+            else:
+                assert ref_time is not None, \
+                    'ref_time must be provided for sky-fixed coordinate systems'
+            
             self.ref_time = ref_time
-            assert self.is_valid()
             
         def __str__(self):
             return self.name
         
         def is_valid(self):
-            return self.name in COORD_SYSTEMS.keys(), "Unsupported coordinate system"
+            return self.name in COORD_SYSTEMS.keys()
+
+        def is_same(self, coordsystem):
+            return self.name==coordsystem.name and self.ref_time==coordsystem.ref_time
+
+        def has_same_type_as(self, coordsystem):
+            return self.name==coordsystem.name
         
         def to_lal(self):
             return COORD_SYSTEMS[self.name]
@@ -49,7 +69,7 @@ class Coordsystem(object):
             Returns the coordinate transformation function from self to target
             """
 
-            assert (self.name,target.name) in COORD_TRANSFORMS.keys(), "Unsupported coord transformation"
+            assert (self.name,target.name) in COORD_TRANSFORMS.keys(), "Unsupported coordinate system transformation"
             return COORD_TRANSFORMS[(self.name,target.name)]
 
 class Skypoint(object):
@@ -61,13 +81,13 @@ class Skypoint(object):
         """
         Instantiate a SkyPoint from spherical coordinates
 
-        lon -- longitude or right ascension (in radians)
-        lat -- latitude or declination (in radians)
+        lon -- longitude [geographic] or right ascension [equatorial] (in radians)
+        lat -- latitude [geographic] or declination [equatorial] (in radians)
         coordsystem -- Coordsystem object that describes the coordinate system
-        label -- optional qualifying label
+        label -- optional label
         """
         
-        assert coordsystem.is_valid(),  "Unsupported coord transformation"
+        assert coordsystem.is_valid(),  "Unsupported coordinate system"
         
         self.lon = lon
         self.lat = lat
@@ -85,7 +105,7 @@ class Skypoint(object):
         label -- optional qualifying label        
         """
 
-        assert coordsystem.is_valid(),  "Unsupported coord transformation"
+        assert coordsystem.is_valid(),  "Unsupported coordinate system"
         assert math.isclose(numpy.linalg.norm(xyz),1), "Input point should be on the unit sphere"
 
         return cls(numpy.arctan2(xyz[1], xyz[0]), \
@@ -129,24 +149,31 @@ class Skypoint(object):
             
     def transformed_to(self, coordsystem, label=''):
         """
-        Transforms to another coordinates system
+        Transforms the Skypoint object's coordinates to another coordinate system
+
         """
     
-        assert coordsystem.ref_time is not None, "Target Coordsystem must have a reference time"
-
-        if self.coordsystem.name == coordsystem.name:
-            #logging.warning('Attempt to transform to same coordinate system')
-            return self
-                     
+        if self.coordsystem.has_same_type_as(coordsystem):
+            return Skypoint(self.lon, self.lat, coordsystem, self.label)
+        
         input = lal.SkyPosition()
         input.longitude = self.lon
         input.latitude = self.lat
         input.system = self.coordsystem.to_lal()
 
         output = lal.SkyPosition()
-        
-        self.coordsystem.transforms_to(coordsystem)(output,input,coordsystem.ref_time)
 
+        ref_times = [t for t in [self.coordsystem.ref_time, coordsystem.ref_time] \
+                         if t is not None]
+        assert len(ref_times)==1, "There should be only one reference time"
+            
+        target = lal.ConvertSkyParams()
+        target.system = coordsystem.to_lal()
+        target.gpsTime = ref_times[0]
+
+        lal.ConvertSkyCoordinates(output, input, target)
+        # self.coordsystem.transforms_to(coordsystem)(output,input,coordsystem.ref_time)
+        
         label = " ".join((self.label, label)) if label else self.label
         return Skypoint(output.longitude, output.latitude, coordsystem, label)
 
@@ -166,14 +193,13 @@ class Skypoint(object):
         normal_detector_plane = numpy.cross(baselines[0], baselines[1])
         normal_detector_plane /= numpy.linalg.norm(normal_detector_plane)
 
-        fiducial_coordsystem = Coordsystem('geographic', self.coordsystem.ref_time)
-        source = self.transformed_to(fiducial_coordsystem).coords('cart')
+        source = self.transformed_to(Coordsystem('geographic')).coords('cart')
         
         mirror = source - 2 * (normal_detector_plane @ source) * normal_detector_plane
         mirror /= numpy.linalg.norm(mirror)
 
-        return Skypoint.from_cart(mirror, fiducial_coordsystem).transformed_to(self.coordsystem, \
-                                                            "Mirror of " + self.label)
+        return Skypoint.from_cart(mirror, Coordsystem('geographic')) \
+                       .transformed_to(self.coordsystem, "Mirror of " + self.label)
     
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
@@ -213,7 +239,30 @@ class Skymap(object):
         self.order = order
         self.coordsystem = coordsystem
         self.data = numpy.empty(healpy.nside2npix(nside)) if array is None else array
+
+    @classmethod
+    def like(cls, skymap, coordsystem=None, data=None):
+        """
+        Instantiate a Skymap object with the same feature as the input
+        skymap unless otherwise requested.
         
+        skymap: reference Skymap object
+        coordsystem: Coordsystem object that defines the coordinate system 
+                     of the new Skymap object 
+        data: data of the new Skymap object 
+        """
+
+        if coordsystem is not None:
+            assert coordsystem.is_valid(),  "Unsupported coordinate system"
+            
+        if data is not None:
+            assert len(data) == skymap.grid.npix, 'Input data has wrong dimensions'
+            
+        return cls(skymap.nside, \
+                   coordsystem if coordsystem is not None else skymap.coordsystem, \
+                   skymap.order, \
+                   data if data is not None else skymap.data)
+                   
     def is_nested(self):
         return self.order == 'nested'
 
@@ -222,9 +271,12 @@ class Skymap(object):
                 for p in self.grid.healpix_to_skycoord(range(self.grid.npix))]
 
     def feed(self, data):
-        out = copy.copy(self)
+        """
+        Update the skymap data with the given array
+        """
+
+        assert len(data) == self.grid.npix, 'Input data has wrong dimensions'
         out.data = data
-        return out
 
     def value(self, skypoint):
         """
@@ -232,7 +284,8 @@ class Skymap(object):
         must have the same coordinate system.
         """
         
-        assert self.coordsystem.name == skypoint.coordsystem.name, "The skymap and skypoint must have the same coordinate system"
+        assert self.coordsystem.is_same(skypoint.coordsystem), \
+            "The skymap and skypoint must have the same coordinate system"
         
         # Get the pixel index that corresponds to the skypoint coordinates  
         idx = healpy.ang2pix(self.nside, \
@@ -244,6 +297,9 @@ class Skymap(object):
         """
         Transforms the skymap to another coordinate system
         """
+
+        if self.coordsystem.has_same_type_as(coordsystem):
+            return Skymap.like(self, coordsystem=coordsystem)
         
         # Get co-latitude and longitude coordinates of the skygrid in the target coord system 
         colat, lon = healpy.pix2ang(self.nside, \
@@ -259,14 +315,11 @@ class Skymap(object):
         (colat_rot, lon_rot) = tuple(map(list,zip(*coords_rot)))
  
         # Compute skymap in target coord system: interpolate the skymap at points that map to target coords
-        data_rot = healpy.get_interp_val(self.data, numpy.array(colat_rot), numpy.array(lon_rot), \
+        data_rotated = healpy.get_interp_val(self.data, numpy.array(colat_rot), numpy.array(lon_rot), \
                                              nest=self.is_nested())
         
-        # Create target skymap and set its coordinate system
-        out = self.feed(data_rot)
-        out.coordsystem = coordsystem
- 
-        return out
+        # Create target skymap and update its data 
+        return Skymap.like(self, coordsystem=coordsystem, data=data_rotated)
     
     def argmin(self, label = 'skymap minimum'):
         """
