@@ -183,3 +183,17 @@ def delayseq(x, shift):
                                      * numpy.exp(-1j * frac_shift * freqs)).real
 
     return numpy.roll(tmp[:x.size], int_shift)
+
+def angle_between(v1, v2):
+    "Compute the angle between two vectors"
+
+    if numpy.linalg.norm(v1) == 0 or \
+       numpy.linalg.norm(v2) == 0:
+        return None
+    
+    # normalize to unit norm
+    v1 /= numpy.linalg.norm(v1)
+    v2 /= numpy.linalg.norm(v2)
+
+    # clip is required to handle exactly coaligned vectors
+    return numpy.arccos(numpy.clip(numpy.dot(v1, v2), -1.0, 1.0))
