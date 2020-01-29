@@ -1,11 +1,12 @@
 import math
 import numpy
+from scipy.signal import convolve2d
 import logging
 
 from ltfatpy import dgt, idgt, dgtreal, idgtreal, gabwin
 from ltfatpy.gabor.gabdual import gabdual
 
-import pyburst.utils
+import pyburst.utils as utils
 
 class TimeFreqTransform(object):
     """A TimeFreqTransform object characterizes a time-frequency transformation
@@ -61,11 +62,13 @@ class TimeFreqTransform(object):
         """
             
         if self.transform == 'dgtreal':
-            return idgtreal(data, self.synthesis_window, \
+            out,_ = idgtreal(data, self.synthesis_window, \
                             self.time_step, self.num_freqs)
+            return out
         elif self.transform == 'dgt':
-            return idgt(data, self.synthesis_window, \
+            out,_ = idgt(data, self.synthesis_window, \
                               self.time_step, self.num_freqs)
+            return out
         # elif test expression:
         else: 
             logging.warning("Unknown transform")
@@ -81,13 +84,18 @@ class TimeFreqTransform(object):
         """
         # assert delay < dualwin.size
 
-        synth_window = gabwin(self.synthesis_window, \
-                              self.time_step, \
-                              self.num_freqs)
-        tfmap = self.forward(utils.delayseq(numpy.fft.fftshift(synth_window), \
+        synth_window,_ = gabwin(self.synthesis_window, \
+                                self.time_step, \
+                                self.num_freqs, \
+                                512)
+        window = numpy.pad(numpy.fft.fftshift(synth_window), (512))
+        tfmap = self.forward(utils.delayseq(window, \
                                       delay))
-        normalized_map = tfmap.data/np.linalg.norm(tfmap.data)
-        return normalized_map[0,:], numpy.sum(normalized_map[1:,:])
+        # normalized_map = numpy.fft.fftshift(tfmap.data, axes=0)/numpy.linalg.norm(tfmap.data)
+        kernel = numpy.vstack((tfmap.data[2:0:-1,7:18],tfmap.data[0:3,7:18]))
+        
+        return kernel, window
+        # return normalized_map[0,:], numpy.sum(normalized_map[1:,:])
 
 class TimeFreq(object):
     """A TimeFreq object characterizes the time-frequency map 
@@ -157,14 +165,21 @@ class TimeFreq(object):
         by an approximate kernel-based interpolation method.
         """
         
-        kernel, error_estimate = self.transform.reduced_kernel(delay)
-        tfmap = numpy.exp(-2j * math.pi * delay * self.freqs()) * \
-                   numpy.apply_along_axis(np.convolve, 1, \
-                                          self.data, kernel, \
-                                          'same')        
+        # kernel, error_estimate = self.transform.reduced_kernel(delay)
+        # print(kernel.shape)
 
-        return TimeFreq(self.transform, tfmap, self.original_size)
-    
+        # phases = numpy.exp(-2j * math.pi * delay * self.freqs())
+        # tfmap = phases[:, numpy.newaxis] * \
+        #        numpy.apply_along_axis(numpy.convolve, 1, \
+        #                               self.data, kernel, \
+        #                               'same')
+        # tfmap = phases[:, numpy.newaxis] * \
+        #                     convolve2d(self.data, kernel, \
+        #                                mode='same')
+        
+        # return TimeFreq(self.transform, tfmap, self.original_size)
+        return None
+        
     def marginal(self, axis='freq', method='medianmean'):
         """
         Marginalize time-freq map in time or freq using
@@ -216,3 +231,40 @@ def _median_bias(n):
         
     return ans
        
+def _col2diag(a):
+    """
+    Transforms columns to diagonals. This function transforms the first column 
+    to the main diagonal. The second column to the first side-diagonal below the 
+    main diagonal and so on. 
+ 
+    This is the Python implementation of comp_col2diag.m function in LTFAT.
+    """
+    
+    b = numpy.zeros_like(a)
+    for n,col in enumerate(a.T):
+        numpy.fill_diagonal(b[n:],col[n:])
+        if n > 0:
+            numpy.fill_diagonal(b[:,a.shape[0]-n:],col[:n])            
+    return b
+
+def twisted_conv(f, g):
+    """
+    Twisted convolution. Computes the twisted convolution of the square matrices
+    f and g.
+
+    Let h=twisted_conv(f,g) for f,g being L x L matrices. Then h is given by
+
+                L-1 L-1
+      h(m,n) =  sum sum f(k,l) * g(m-k,n-l)*exp(-2*pi*i*(m-k)*l/L);
+                l=0 k=0
+
+    where m-k and n-l are computed modulo L.
+
+    This is the Python implementation of tconv.m function in LTFAT.
+    """
+
+    assert f.shape == g.shape
+    
+    a = _col2diag(numpy.fft.ifft(f, axis=0)) * f.shape[0]
+    b = _col2diag(numpy.fft.ifft(g, axis=0)) * g.shape[0]
+    return numpy.fft.fft(comp_col2diag(numpy.dot(a, b)), axis=0) / f.shape[0]
