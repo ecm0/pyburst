@@ -196,4 +196,5 @@ def angle_between(v1, v2):
     v2 /= numpy.linalg.norm(v2)
 
     # clip is required to handle exactly coaligned vectors
-    return numpy.arccos(numpy.clip(numpy.dot(v1, v2), -1.0, 1.0))
+    # return numpy.arccos(numpy.clip(numpy.dot(v1, v2), -1.0, 1.0))
+    return numpy.arctan2(numpy.linalg.norm(numpy.cross(v1, v2)), numpy.dot(v1, v2))
