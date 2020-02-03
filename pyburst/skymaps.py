@@ -47,7 +47,7 @@ class Coordsystem(object):
                 assert ref_time is not None, \
                     'ref_time must be provided for sky-fixed coordinate systems'
             
-            self.ref_time = lal.LIGOTimeGPS(time_ref)
+            self.ref_time = lal.LIGOTimeGPS(ref_time)
             
         def __str__(self):
             return self.name
