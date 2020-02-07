@@ -66,13 +66,14 @@ class Detector(object):
             coordinates (RA and dec) and the Greenwich Mean Sidereal Time (GMST) 
             to define the sky location.
 
-            If the skypoints are given in the geographic coordinate system,
-            they are mapped to fiducial equatorial coordinate system with 
-            GMST = 0 hr.
-
-            The antenna pattern is computed at the provided time if not None, otherwise
+            If the skypoints are given in the equatorial coordinate system, 
+            the antenna pattern is computed at the provided time if not None, otherwise
             it is computed at the reference time of the coordinate system of 
             the skypoints.
+
+            If the skypoints are given in the geographic coordinate system,
+            they are mapped to fiducial equatorial coordinate system with 
+            GMST = 0 hr (REFDATE_GMST_ZERO).
         """
 
         if not isinstance(skypoints, list):
@@ -89,8 +90,12 @@ class Detector(object):
 
             if p.coordsystem.name == 'geographic':
                 p = p.transformed_to(FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO)
-            
-            gmst_rad = lal.GreenwichMeanSiderealTime(time if time is not None else \
+                if time is not None:
+                    logging.warning('time ignored when skypoints are in' \
+                                    + 'the geographic coordinate system')
+                gmst_rad = lal.GreenwichMeanSiderealTime(p.coordsystem.ref_time)
+            else:
+                gmst_rad = lal.GreenwichMeanSiderealTime(time if time is not None else \
                                                      p.coordsystem.ref_time)
             
             # XLALComputeDetAMResponse() takes equatorial coordinates (RA and dec)
@@ -113,13 +118,15 @@ class Detector(object):
             This function uses LALTimeDelayFromEarthCenter() that takes equatorial 
             coordinates (RA and dec) and a reference GPS time to define the sky location.
 
-            If the skypoints are given in the geographic coordinate system,
-            they are mapped to the fiducial equatorial coordinate system with 
-            GMST = 0 hr.
-
-            The time delays are computed at the provided time if not None, otherwise
+            If the skypoints are given in the equatorial coordinate system, 
+            the time delays are computed at the provided time if not None, otherwise
             it is computed at the reference time of the coordinate system of 
             the skypoints.
+
+            If the skypoints are given in the geographic coordinate system,
+            they are mapped to fiducial equatorial coordinate system with 
+            GMST = 0 hr (REFDATE_GMST_ZERO).
+
         """
 
         if not isinstance(skypoints, list):
@@ -136,14 +143,19 @@ class Detector(object):
 
             if p.coordsystem.name == 'geographic':
                 p = p.transformed_to(FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO)
+                if time is not None:
+                    logging.warning('time ignored when skypoints are in' \
+                                    + 'the geographic coordinate system')
+                time = p.coordsystem.ref_time
+            else:
+                time = time if time is not None else p.coordsystem.ref_time
 
             # TimeDelayFromEarthCenter() takes equatorial coordinates (RA and dec)
             # and a GPS reference time to define a sky location
 
             delays.append(lal.TimeDelayFromEarthCenter(self.location, \
-                                        *p.coords(fmt='lonlat',unit='radians'), \
-                                        time if time is not None else p.coordsystem.ref_time))
-                          
+                                    *p.coords(fmt='lonlat',unit='radians'), time))
+
         return numpy.squeeze(numpy.array(delays))
         
     def project_strain(self, hplus, hcross, skypoint, psi):
