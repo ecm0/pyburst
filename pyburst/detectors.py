@@ -89,10 +89,9 @@ class Detector(object):
             # to the fiducial equatorial coordinates system with GMST = 0 hr.
 
             if p.coordsystem.name == 'geographic':
+                assert time is None, \
+                    'time cannot be forced for skypoints in the geographic coordinate system'
                 p = p.transformed_to(FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO)
-                if time is not None:
-                    logging.warning('time ignored when skypoints are in' \
-                                    + 'the geographic coordinate system')
                 gmst_rad = lal.GreenwichMeanSiderealTime(p.coordsystem.ref_time)
             else:
                 gmst_rad = lal.GreenwichMeanSiderealTime(time if time is not None else \
@@ -143,9 +142,8 @@ class Detector(object):
 
             if p.coordsystem.name == 'geographic':
                 p = p.transformed_to(FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO)
-                if time is not None:
-                    logging.warning('time ignored when skypoints are in' \
-                                    + 'the geographic coordinate system')
+                assert time is None, \
+                    'time cannot be forced for skypoints in the geographic coordinate system'
                 time = p.coordsystem.ref_time
             else:
                 time = time if time is not None else p.coordsystem.ref_time
