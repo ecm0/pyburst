@@ -68,6 +68,18 @@ class TestDetector(TestCase):
         self.assertAlmostEqual(pat_eq[0], pat_geo[0]) # fplus
         self.assertAlmostEqual(pat_eq[1], pat_geo[1]) # fcross
 
+    def test_antenna_pattern_forcing_time_when_geo(self):
+        """ Check failure when forcing time with skypoints in the geographic
+            coordinate system
+        """
+        pt = pb.skymaps.Skypoint(0, 0, COORD_SYS_GEOGRAPHIC)
+        d = pb.detectors.Detector(random.choice(DETECTORS))
+
+        try:
+            pat_geo = d.antenna_pattern(pt, TIME)
+        except AssertionError as ae:
+            self.assertTrue(ae)
+            
     def test_delay(self):
         """ Check consistency of delay computed using two coordinate systems
         """
@@ -80,6 +92,18 @@ class TestDetector(TestCase):
 
         self.assertAlmostEqual(dt_eq, dt_geo, places=5)
 
+    def test_delay_forcing_time_when_geo(self):
+        """ Check failure when forcing time with skypoints in the geographic
+            coordinate system
+        """
+        pt = pb.skymaps.Skypoint(0, 0, COORD_SYS_GEOGRAPHIC)
+        d = pb.detectors.Detector(random.choice(DETECTORS))
+
+        try:
+            dt_geo = d.time_delay_from_earth_center(pt, TIME)
+        except AssertionError as ae:
+            self.assertTrue(ae)
+        
     def test_delay_antipodal_point(self):
         """ Check that original and antipodal points have opposite delays
         """
