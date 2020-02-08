@@ -182,4 +182,17 @@ class TestUtils(TestCase):
             
             self.assertLess(error, 10**pb.DELAYSEQ_LOG10_REJECTION)
 
-            
+
+    def test_orthonormalize(self):
+        """ Test Gram-Schmidt orthonormalization of two vectors"""
+
+        u1 = numpy.array([1,2,2])
+        u2 = numpy.array([-1,0,2])
+        v1, v2 = pb.orthonormalize(u1, u2)
+        
+        # Excepted result is:
+        r1 = numpy.array([-1,-2,-2])/3
+        r2 = numpy.array([2,1,-2])/3
+
+        self.assertTrue(numpy.allclose(v1, r1))
+        self.assertTrue(numpy.allclose(v2, r2))
