@@ -209,19 +209,21 @@ def orthonormalize(v1, v2, dominant_frame=False):
     v1 and v2 (default: False)
     """
     
-    assert v1.ndim == 1 and v2.name == 1, "Input vars should be one-dim vectors"
+    assert v1.ndim == 1 and v2.ndim == 1, "Input vars should be one-dim vectors"
     assert v1.shape == v2.shape, "Input vectors should have same shape"
+
+    v = numpy.column_stack((v1, v2))
     
-    ## QR factorization is equivalent to Gram-Schmidt orthonormalization
-    q, _ = numpy.linalg.qr(numpy.column_stack(v1, v2))
-    
-    if dominant_frame is True and \
-       math.isclose(numpy.linalg.norm(v1), numpy.linalg.norm(v2), abs_tol=1e-6):
+    if dominant_frame is True:
         
         # Align with major and minor axes of the generated ellipse by v1 and v2
-        psi = .25 * numpy.arctan2(2* (v1 @ v2), (v1 @ v1) - (v2 @ v2))
-        c, s = np.cos(psi), np.sin(psi)
-        R = np.array(((c, s), (-s, c)))
-        q = q @ R
-        
-    return q[:,0], q[:,1]
+        psi = .5 * numpy.arctan2(2* (v1 @ v2), (v1 @ v1) - (v2 @ v2))
+        c, s = math.cos(psi), math.sin(psi)
+        R = numpy.array(((c, -s), (s, c)))
+        res = v @ R
+    else: 
+        ## Apply Gram-Schmidt orthonormalization by using QR factorization
+        res, _ = numpy.linalg.qr(v)
+
+    return res[:,0]/numpy.linalg.norm(res[:,0]), \
+        res[:,1]/numpy.linalg.norm(res[:,1])
