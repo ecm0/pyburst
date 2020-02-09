@@ -182,7 +182,6 @@ class TestUtils(TestCase):
             
             self.assertLess(error, 10**pb.DELAYSEQ_LOG10_REJECTION)
 
-
     def test_orthonormalize(self):
         """ Test Gram-Schmidt orthonormalization of two vectors"""
 
@@ -193,6 +192,37 @@ class TestUtils(TestCase):
         # Excepted result is:
         r1 = numpy.array([-1,-2,-2])/3
         r2 = numpy.array([2,1,-2])/3
+
+        self.assertTrue(numpy.allclose(v1, r1))
+        self.assertTrue(numpy.allclose(v2, r2))
+
+    def test_orthonormalize_dominant(self):
+        """ Test dominant frame orthormalization
+        in two simple cases
+        """
+
+        u1 = numpy.array([1,+0.5,0])
+        u2 = numpy.array([1,-0.5,0])
+        v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
+        print(v1, v2)
+        
+        # Excepted result is:
+        r1 = numpy.array([1,0,0])
+        r2 = numpy.array([0,-1,0])
+        print(r1, r2)
+
+        self.assertTrue(numpy.allclose(v1, r1))
+        self.assertTrue(numpy.allclose(v2, r2))
+        
+        u1 = numpy.array([0.5,+1,0])
+        u2 = numpy.array([0.5,-1,0])
+        v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
+        print(v1, v2)
+        
+        # Excepted result is:
+        r1 = numpy.array([0,1,0])
+        r2 = numpy.array([1,0,0])
+        print(r1, r2)
 
         self.assertTrue(numpy.allclose(v1, r1))
         self.assertTrue(numpy.allclose(v2, r2))
