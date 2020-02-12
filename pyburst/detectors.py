@@ -178,7 +178,7 @@ class Detector(object):
         if skypoint.coordsystem.name == 'geographic':
             skypoint = skypoint.transformed_to(Coordsystem('equatorial', hplus.epoch))
             
-        print(skypoint.coords(fmt='lonlat',unit='radians'))
+        #print(skypoint.coords(fmt='lonlat',unit='radians'))
             
         return TimeSeries.from_lal(SimDetectorStrainREAL8TimeSeries( \
                                         hplus, hcross, \

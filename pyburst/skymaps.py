@@ -142,7 +142,7 @@ class Skypoint(object):
         if unit=='radians':
             return coords
         elif unit=='degrees':
-            return map(math.degrees, coords)
+            return list(map(math.degrees, coords))
         else:
             logging.warning('Unknown unit')
             return None
@@ -198,11 +198,34 @@ class Skypoint(object):
         source = self.transformed_to(Coordsystem('geographic')).coords('cart')
         
         mirror = source - 2 * (normal_detector_plane @ source) * normal_detector_plane
-        mirror /= numpy.linalg.norm(mirror)
 
         return Skypoint.from_cart(mirror, Coordsystem('geographic')) \
                        .transformed_to(self.coordsystem, "Mirror of " + self.label)
     
+    def isodelays(self, detector_pair, nb_points=200):
+        """
+        Compute so-called iso-delay circle of points with same time-of-flight delay in a
+        pair of detectors
+        """
+        assert len(detector_pair)==2, "Requires a tuple with 2 detectors"
+        
+        baseline = detector_pair[0].location-detector_pair[1].location
+        baseline /= numpy.linalg.norm(baseline)
+
+        source = self.transformed_to(Coordsystem('geographic')).coords('cart')
+        
+        circle_center = (source @ baseline) * baseline
+        
+        first_circle_vect = source - circle_center
+        
+        second_circle_vect = numpy.cross(source, baseline)
+        second_circle_vect *= numpy.linalg.norm(first_circle_vect) / numpy.linalg.norm(second_circle_vect) 
+
+        return [Skypoint.from_cart(circle_center + second_circle_vect*numpy.cos(phi) + first_circle_vect*numpy.sin(phi), \
+                                   Coordsystem('geographic')) \
+                        .transformed_to(self.coordsystem, "iso-delay of " + self.label) \
+                for phi in numpy.linspace(0,2*numpy.pi,nb_points)]
+
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
                         markersize=6, \
