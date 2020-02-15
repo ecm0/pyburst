@@ -6,7 +6,7 @@ import logging
 from ltfatpy import dgt, idgt, dgtreal, idgtreal, gabwin
 from ltfatpy.gabor.gabdual import gabdual
 
-import pyburst.utils as utils
+from . import utils
 
 class TimeFreqTransform(object):
     """A TimeFreqTransform object characterizes a time-frequency transformation
