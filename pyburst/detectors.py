@@ -21,7 +21,7 @@ from lalsimulation import SimDetectorStrainREAL8TimeSeries
 import gwpy
 from gwpy.timeseries import TimeSeries
 
-from pyburst.skymaps import Coordsystem
+from .skymaps import Coordsystem
 
 # Reference date where Greenwich Mean Sidereal Time is 0 hr
 # lal.GreenwichMeanSiderealTime(REFDATE_GMST_ZERO) results in -9.524206245228903e-15
