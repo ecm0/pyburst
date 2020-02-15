@@ -187,48 +187,32 @@ class TestUtils(TestCase):
 
         u1 = numpy.array([1,2,2])
         u2 = numpy.array([-1,0,2])
-        v1, v2 = pb.orthonormalize(u1, u2)
+        v, _ = pb.orthonormalize(u1, u2)
         
         # Excepted result is:
         r1 = numpy.array([-1,-2,-2])/3
         r2 = numpy.array([2,1,-2])/3
 
-        self.assertTrue(numpy.allclose(v1, r1))
-        self.assertTrue(numpy.allclose(v2, r2))
+        self.assertTrue(numpy.allclose(v[0], r1))
+        self.assertTrue(numpy.allclose(v[1], r2))
 
     def test_orthonormalize_dominant(self):
-        """ Test dominant frame orthormalization
+        """ Test dominant polarization frame orthormalization
         in two simple cases
         """
         
         u1 = numpy.array([1,+0.5,0])
         u2 = numpy.array([1,-0.5,0])
-        v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
-        print(v1, v2)
-
-        u, s, vh = numpy.linalg.svd(numpy.column_stack((u1, u2)))
-        print(u, s, vh)
+        v, _ = pb.orthonormalize(u1, u2, dominant_polar_frame=True)
+        print(v)
         
         # Excepted result is:
         r1 = numpy.array([1,0,0])
-        r2 = numpy.array([0,-1,0])
+        r2 = numpy.array([0,1,0])
         print(r1, r2)
 
-        self.assertTrue(numpy.allclose(v1, r1))
-        self.assertTrue(numpy.allclose(v2, r2))
+        print(numpy.cross(v[0], r1))
+        print(numpy.cross(v[1], r2))
         
-        u1 = numpy.array([0.5,+1,0])
-        u2 = numpy.array([0.5,-1,0])
-        v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
-        print(v1, v2)
-
-        u, s, vh = numpy.linalg.svd(numpy.column_stack((u1, u2)))
-        print(u, s, vh)
-
-        # Excepted result is:
-        r1 = numpy.array([0,1,0])
-        r2 = numpy.array([1,0,0])
-        print(r1, r2)
-
-        self.assertTrue(numpy.allclose(v1, r1))
-        self.assertTrue(numpy.allclose(v2, r2))
+        self.assertTrue(numpy.allclose(numpy.cross(v[0], r1), 0))
+        self.assertTrue(numpy.allclose(numpy.cross(v[1], r2), 0))
