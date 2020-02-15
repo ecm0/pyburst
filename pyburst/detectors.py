@@ -22,6 +22,7 @@ import gwpy
 from gwpy.timeseries import TimeSeries
 
 from .skymaps import Coordsystem
+from .skymaps import Skypoint
 
 # Reference date where Greenwich Mean Sidereal Time is 0 hr
 # lal.GreenwichMeanSiderealTime(REFDATE_GMST_ZERO) results in -9.524206245228903e-15
@@ -78,10 +79,11 @@ class Detector(object):
 
         if not isinstance(skypoints, list):
             skypoints = [skypoints]
-
+            
         f = []
         for p in skypoints:
-            
+
+            assert isinstance(p, Skypoint), "Requires Skypoint objects"
             assert p.coordsystem.is_valid(), "Unsupported coordinate system"
             
             # XLALComputeDetAMResponse() requires equatorial coordinates.
@@ -104,7 +106,7 @@ class Detector(object):
                                       psi, gmst_rad))
 
         f = numpy.squeeze(numpy.array(f))
-
+            
         if f.ndim == 1:
             return tuple(f) # fplus, fcross
         else:
