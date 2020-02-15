@@ -210,7 +210,7 @@ class Skypoint(object):
         """
         Compute the great-circle distance to another Skypoint in radians
         """
-        assert(other_pt, Skypoint), 'Requires a Skypoint object'
+        assert isinstance(other_pt, Skypoint), 'Requires a Skypoint object'
 
         return utils.angle_between(self.coords('cart'), other_pt.coords('cart'))
 
