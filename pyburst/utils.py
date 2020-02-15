@@ -185,7 +185,7 @@ def delayseq(x, shift):
     return numpy.roll(tmp[:x.size], int_shift)
 
 def angle_between(v1, v2):
-    "Compute the angle between two vectors"
+    "Compute the angle between two vectors in radians"
 
     if numpy.linalg.norm(v1) == 0 or \
        numpy.linalg.norm(v2) == 0:
