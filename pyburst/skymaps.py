@@ -10,6 +10,8 @@ from astropy_healpix import HEALPix
 from astropy.coordinates import SkyCoord, ICRS
 import matplotlib.pyplot as plt
 
+from . import utils
+
 COORD_SYSTEMS = {'geographic': lal.COORDINATESYSTEM_GEOGRAPHIC, \
                  'equatorial': lal.COORDINATESYSTEM_EQUATORIAL}
 
@@ -79,7 +81,7 @@ class Skypoint(object):
     
     def __init__(self, lon, lat, coordsystem, label=''):
         """
-        Instantiate a SkyPoint from spherical coordinates
+        Instantiate a Skypoint from spherical coordinates
 
         lon -- longitude [geographic] or right ascension [equatorial] (in radians)
         lat -- latitude [geographic] or declination [equatorial] (in radians)
@@ -97,7 +99,7 @@ class Skypoint(object):
     @classmethod
     def from_cart(cls, xyz, coordsystem, label=''):
         """
-        Instantiate a SkyPoint from cartesian coordinates
+        Instantiate a Skypoint from cartesian coordinates
         The input coordinates must be on the unit sphere
         
         xyz -- tuple or Numpy array with the X, Y and Z coordinates
@@ -202,6 +204,16 @@ class Skypoint(object):
 
         return Skypoint.from_cart(mirror, Coordsystem('geographic')) \
                        .transformed_to(self.coordsystem, "Mirror of " + self.label)
+
+            
+    def angle_with(self, other_pt):
+        """
+        Compute the great-circle distance to another Skypoint in radians
+        """
+        assert(other_pt, Skypoint), 'Requires a Skypoint object'
+
+        return utils.angle_between(self.coords('cart'), other_pt.coords('cart'))
+
     
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
