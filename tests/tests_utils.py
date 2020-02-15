@@ -200,11 +200,14 @@ class TestUtils(TestCase):
         """ Test dominant frame orthormalization
         in two simple cases
         """
-
+        
         u1 = numpy.array([1,+0.5,0])
         u2 = numpy.array([1,-0.5,0])
         v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
         print(v1, v2)
+
+        u, s, vh = numpy.linalg.svd(numpy.column_stack((u1, u2)))
+        print(u, s, vh)
         
         # Excepted result is:
         r1 = numpy.array([1,0,0])
@@ -218,7 +221,10 @@ class TestUtils(TestCase):
         u2 = numpy.array([0.5,-1,0])
         v1, v2 = pb.orthonormalize(u1, u2, dominant_frame=True)
         print(v1, v2)
-        
+
+        u, s, vh = numpy.linalg.svd(numpy.column_stack((u1, u2)))
+        print(u, s, vh)
+
         # Excepted result is:
         r1 = numpy.array([0,1,0])
         r2 = numpy.array([1,0,0])
