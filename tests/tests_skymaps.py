@@ -49,7 +49,10 @@ class TestSkypoint(TestCase):
             self.fail('Skypoint instantiation failed')
 
     def test_from_cart_basics(self):
-
+        """ Check the spherical to cartesian coord conversion 
+        in a simple case
+        """
+        
         cartesian_coords = ([1,0,0], [0,1,0], [0,0,1])
         spherical_coords = ([0,0], [pi/2, 0], [0, pi/2])
 
@@ -60,7 +63,9 @@ class TestSkypoint(TestCase):
             self.assertAlmostEqual(p.lat, sph[1], places=7)
 
     def test_sph2cart_inversion(self):
-
+        """ Check consistency of the spherical to cartesian 
+        coord conversion and back
+        """
         vec = numpy.array([uniform(0,1), uniform(0,1), uniform(0,1)])
         vec /= numpy.linalg.norm(vec)
         p = pb.Skypoint.from_cart(vec, COORD_SYS_GEOGRAPHIC)
@@ -78,6 +83,22 @@ class TestSkypoint(TestCase):
         self.assertAlmostEqual(pt_orig.lon, pt_eq.lon, places=7)
         self.assertAlmostEqual(pt_orig.lat, pt_eq.lat, places=7)
 
+    def test_angle_with(self):
+        """ Check the angle measurement in a simple case
+        """
+
+        lon = uniform(0,360)
+        lat1 = uniform(-90,90)
+        lat2 = uniform(-90,90)
+        pt1 = pb.Skypoint(*numpy.radians(numpy.array([lon, lat1])), \
+                         COORD_SYS_GEOGRAPHIC, '')
+        pt2 = pb.Skypoint(*numpy.radians(numpy.array([lon, lat2])), \
+                         COORD_SYS_GEOGRAPHIC, '')
+        
+        self.assertAlmostEqual(numpy.degrees(pt1.angle_with(pt2)), \
+                               numpy.abs(lat1-lat2), \
+                               places=7)
+        
 class TestSkymap(TestCase):
 
     def test_value(self):
