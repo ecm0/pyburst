@@ -203,7 +203,6 @@ class Skypoint(object):
 
         return Skypoint.from_cart(mirror, Coordsystem('geographic')) \
                        .transformed_to(self.coordsystem, "Mirror of " + self.label)
-
             
     def angle_with(self, other_pt):
         """
@@ -214,11 +213,12 @@ class Skypoint(object):
         return utils.angle_between(self.coords('cart'), other_pt.coords('cart'))
 
     
-    def isodelays(self, detector_pair, nb_points=200):
+    def ring_isodelays(self, detector_pair, nb_points=200):
         """
-        Compute so-called iso-delay circle of points with same time-of-flight delay in a
-        pair of detectors
+        Compute the iso-delay ring that collects all points with the same time-of-flight delay as self
+        in a pair of detectors
         """
+
         assert len(detector_pair)==2, "Requires a tuple with 2 detectors"
         
         baseline = detector_pair[0].location-detector_pair[1].location
@@ -233,10 +233,10 @@ class Skypoint(object):
         second_circle_vect = numpy.cross(source, baseline)
         second_circle_vect *= numpy.linalg.norm(first_circle_vect) / numpy.linalg.norm(second_circle_vect) 
 
-        return [Skypoint.from_cart(circle_center + second_circle_vect*numpy.cos(phi) + first_circle_vect*numpy.sin(phi), \
+        return [Skypoint.from_cart(circle_center + second_circle_vect * numpy.cos(phi) + first_circle_vect * numpy.sin(phi), \
                                    Coordsystem('geographic')) \
-                        .transformed_to(self.coordsystem, "iso-delay of " + self.label) \
-                for phi in numpy.linspace(0,2*numpy.pi,nb_points)]
+                        .transformed_to(self.coordsystem, "iso-delay ring for " + self.label) \
+                for phi in numpy.linspace(0, 2*math.pi, nb_points)]
 
     def display(self, marker, color):
         healpy.projplot(*self.coords(), marker+color, \
