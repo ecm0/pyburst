@@ -35,7 +35,8 @@ DETECTORS = ['H1', 'L1', 'V1']
 class TestDetector(TestCase):
 
     def test_fiducial_equatorial_coordsys(self):
-        """ Check that """
+        """ Check that longitude and latitude in the Geographic coord system are equal to 
+        right ascension and declination in the fiducial Equatorial coord system"""
         
         coords = numpy.array([uniform(0,360), uniform(-90,90)])
         pt_geo = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_GEOGRAPHIC)
@@ -134,6 +135,30 @@ class TestDetector(TestCase):
         # print(dt_relative_orig, dt_relative_mirror)
 
         self.assertTrue(numpy.allclose(dt_relative_orig, dt_relative_mirror))
+
+    def test_delay_ring_isodelays_point(self):
+        """ Check that points on the isodelay ring have same delays
+        """
+        
+        coords = numpy.array([uniform(0,360), uniform(-90,90)])
+        pt = pb.skymaps.Skypoint(*numpy.radians(coords), COORD_SYS_EQUATORIAL)
+        network = [pb.detectors.Detector(d) for d in DETECTORS[:2]]
+        
+        dt_earth_center_orig = numpy.array([d.time_delay_from_earth_center(pt) for d in network])
+        ring = pt.ring_isodelays(network)
+
+        dt_earth_center_ring = []
+        for d in network:
+            dt_earth_center_ring.append(numpy.array([d.time_delay_from_earth_center(p) \
+                                                for p in ring]))
+        dt_earth_center_ring = numpy.array(dt_earth_center_ring)
+            
+        dt_relative_orig = dt_earth_center_orig[1:] - dt_earth_center_orig[0]
+        dt_relative_ring = dt_earth_center_ring[1:] - dt_earth_center_ring[0]
+
+        print(dt_relative_orig, dt_relative_ring)
+
+        self.assertTrue(numpy.allclose(dt_relative_orig, dt_relative_ring))
         
     def test_delay_project_strain(self):
         """ Check consistency of project_strain() against time_delay_earth_center()
