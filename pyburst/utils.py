@@ -177,7 +177,7 @@ def delayseq(x, shift):
     int_shift = int(numpy.fix(shift))
     frac_shift = shift - int_shift
     
-    nfft = next_pow2(x.size + int_shift)
+    nfft = next_pow2(x.size)
     freqs = 2 * math.pi * numpy.fft.ifftshift((numpy.arange(nfft) - nfft // 2)) / nfft
     tmp = numpy.fft.ifft(numpy.fft.fft(x, nfft)  \
                                      * numpy.exp(-1j * frac_shift * freqs)).real
