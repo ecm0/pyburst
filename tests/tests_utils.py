@@ -115,6 +115,14 @@ class TestUtils(TestCase):
         shifted = pb.delayseq(numpy.zeros(N), shift)
         self.assertEqual(shifted.size, N)
 
+    def test_delayseq_output_size_other(self):
+        """ Test delayseq: check input and output sizes match"""
+
+        N = 8256
+        shift = numpy.random.uniform(low=70, high=80)
+        shifted = pb.delayseq(numpy.zeros(N), -shift)
+        self.assertEqual(shifted.size, N)
+        
     def test_delayseq_with_sinus(self):
         """ Test delayseq with sinusoidal signal"""
 
