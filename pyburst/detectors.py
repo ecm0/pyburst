@@ -1,3 +1,4 @@
+import math
 import logging
 import numpy
 
@@ -13,7 +14,6 @@ DETECTOR_SITES = {
     'K1': LALDetectorIndexKAGRADIFF,
     'I1': LALDetectorIndexLIODIFF
     }
-
 
 import lalsimulation
 from lalsimulation import SimDetectorStrainREAL8TimeSeries
@@ -35,11 +35,71 @@ REFDATE_GMST_ZERO = lal.LIGOTimeGPS(630696086, 238589290) # Dec 31 1999, 17:21:1
 FIDUCIAL_EQUATORIAL_COORDSYS_GMST_ZERO = Coordsystem('equatorial', \
                                                      ref_time=REFDATE_GMST_ZERO)
 
+class Network(object):
+    """
+    A Network object represents an array of gravitational wave 
+    (GW) interferometric detector.
+    """
+
+    def __init__(self, detectors):
+        """
+        detectors  -- list of detector labels (str)
+        """
+        self.detectors = [Detector(d) for d in detectors]
+        
+    def __str__(self):
+        return " ".join([d.name for d in self.detectors])
+
+    def plane(self, coordsystem, indices=[0, 1, 2], npoints=50):
+        """
+        Returns a list of Skypoint objects pointing in the direction
+        of the plane for by three detectors.
+
+        coordsystem: Coordsystem object that describes the 
+        indices: list of indices that selects the 3 reference detectors (default: [0, 1, 2])
+        npoints: number of skypoints (default: 50)
+        """
+
+        assert len(self.detectors) > 2, "Not enough detectors to define a plane"
+
+        detectors = [self.detectors[i] for i in indices]
+        
+        plane = numpy.array([detectors[2].location-detectors[0].location, \
+                                 detectors[1].location-detectors[0].location])
+        plane_basis, _, _ = numpy.linalg.svd(plane.T)
+        
+        pts = []
+        for az in np.linspace(0, 2*math.pi, npoints):
+            pts.append(Skypoint.from_cart(plane_basis[:,0] * math.cos(az) +  \
+                                            plane_basis[:,1] * math.sin(az), \
+                                            coordsystem))
+        return pts
+
+    def antenna_pattern(self, skypoints, time=None, psi=0, dominant_frame=False):
+        """
+        Compute antenna response matrix for all detector in the network 
+        and for a list of skypoints
+        
+        skypoints: Skypoint object or list of Skypoint objects
+        time: time date when to compute the antenna pattern (default: None) 
+        psi: optional polarization angle (default: 0)
+        """
+
+        res = np.array([d.antenna_pattern(skypoints, time, psi) \
+                        for d in network.detectors])
+        
+        if dominant_frame:
+            return orthonormalize(res[:,0], res[:,1], \
+                               dominant_polar_frame=True)
+        else:
+            return res
+
+        
 class Detector(object):
     """
     A Detector object characterises a gravitational wave (GW) interferometric detector
     """
-
+   
     def __init__(self, detector):
         """
         detector  -- label string of the detector
